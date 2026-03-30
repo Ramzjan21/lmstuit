@@ -1,0 +1,203 @@
+﻿
+=== FINALS CONTENT START ===
+
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="LMS">
+    <meta name="keywords" content="admin,TUIT">
+    <meta name="author" content="stacks">
+    <meta name="csrf-token" content="MMh8fylVSUTxZaBl5WJA5dZnRa3mUBfWRZhnqtUx">
+    <!-- The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <!-- Title -->
+    <title>LMS</title>
+    <!-- Styles -->
+    
+
+    <link rel="shortcut icon" href="https://lms.tuit.uz/assets/images/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="https://lms.tuit.uz/assets/images/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="https://lms.tuit.uz/assets/images/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="https://lms.tuit.uz/assets/images/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="https://lms.tuit.uz/assets/images/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="https://lms.tuit.uz/assets/images/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="https://lms.tuit.uz/assets/images/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="https://lms.tuit.uz/assets/images/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://lms.tuit.uz/assets/images/apple-touch-icon-180x180.png" />
+
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/icomoon/style.css" rel="stylesheet">
+    
+    <link href="https://lms.tuit.uz/assets/plugins/switchery/switchery.min.css" rel="stylesheet" />
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap-datepicker/css/datepicker3.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap-datepicker/css/datepicker.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://lms.tuit.uz/assets/css/select2.min.css">
+    <link rel="stylesheet" href="https://lms.tuit.uz/assets/css/metisMenu.min.css">
+
+    <link href="https://lms.tuit.uz/assets/plugins/datatables/css/jquery.datatables.min.css" rel="stylesheet" />	
+<link href="https://lms.tuit.uz/assets/plugins/datatables/css/jquery.datatables_themeroller.css" rel="stylesheet" />	
+
+    <!-- Theme Styles -->
+    <link href="https://lms.tuit.uz/assets/css/space.css?v=1.6" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/css/custom.css?v=1.2" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/css/fonts.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/css/toastify.min.css?v=1.0" rel="stylesheet" type="text/css">
+    <link href="https://lms.tuit.uz/assets/css/style.css?v=1.9" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    <style>
+        @media (max-width: 768px) {
+            .server-time-t4562h {
+                width: 140px !important;
+                font-size: 11px !important;
+                margin-top: -8px !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="page-sidebar-fixed page-header-fixed">
+    <!-- Page Container -->
+    <div class="page-container">
+        <!-- Page Sidebar -->
+        <div class="page-sidebar">
+            <a class="logo-box" href="/">
+                <div>
+                    <img src="https://lms.tuit.uz/assets/images/logo-md.png" alt="" height="40">
+                    <span>Muhammad al-Xorazmiy nomidagi Toshkent Axborot Texnologiyalari Universiteti</span>
+                </div>
+                <i class="icon-radio_button_unchecked" id="fixed-sidebar-toggle-button"></i>
+                <i class="icon-close" id="sidebar-toggle-button-close"></i>
+            </a>
+            <div class="page-sidebar-inner">
+                <div class="page-sidebar-menu" id="sidebar-menu">
+                    <ul class="accordion-menu" id="side-menu">
+                        <li>
+                            <a href="https://lms.tuit.uz/dashboard/news">
+                                <i class="menu-icon fa fa-dashboard"></i><span>Dashboard</span>
+                            </a>
+                        </li>
+ 
+
+=== INFO CONTENT START ===
+
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="LMS">
+    <meta name="keywords" content="admin,TUIT">
+    <meta name="author" content="stacks">
+    <meta name="csrf-token" content="MMh8fylVSUTxZaBl5WJA5dZnRa3mUBfWRZhnqtUx">
+    <!-- The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <!-- Title -->
+    <title>LMS</title>
+    <!-- Styles -->
+    
+
+    <link rel="shortcut icon" href="https://lms.tuit.uz/assets/images/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="https://lms.tuit.uz/assets/images/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="https://lms.tuit.uz/assets/images/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="https://lms.tuit.uz/assets/images/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="https://lms.tuit.uz/assets/images/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="https://lms.tuit.uz/assets/images/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="https://lms.tuit.uz/assets/images/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="https://lms.tuit.uz/assets/images/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://lms.tuit.uz/assets/images/apple-touch-icon-180x180.png" />
+
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/icomoon/style.css" rel="stylesheet">
+    
+    <link href="https://lms.tuit.uz/assets/plugins/switchery/switchery.min.css" rel="stylesheet" />
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap-datepicker/css/datepicker3.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap-datepicker/css/datepicker.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://lms.tuit.uz/assets/css/select2.min.css">
+    <link rel="stylesheet" href="https://lms.tuit.uz/assets/css/metisMenu.min.css">
+
+        <style>
+        .profil-edit {
+            /* position: absolute;
+                                                top: 10px;
+                                                right: 10px; */
+            padding: 10px 12px;
+            background: rgb(29, 45, 91);
+            color: #fff;
+            border-radius: 50%;
+            font-size: 15px;
+            width: 40px;
+            height: 40px;
+            displa
+=== DEADLINES CONTENT START ===
+
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="LMS">
+    <meta name="keywords" content="admin,TUIT">
+    <meta name="author" content="stacks">
+    <meta name="csrf-token" content="MMh8fylVSUTxZaBl5WJA5dZnRa3mUBfWRZhnqtUx">
+    <!-- The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <!-- Title -->
+    <title>LMS</title>
+    <!-- Styles -->
+    
+
+    <link rel="shortcut icon" href="https://lms.tuit.uz/assets/images/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="https://lms.tuit.uz/assets/images/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="https://lms.tuit.uz/assets/images/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="https://lms.tuit.uz/assets/images/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="https://lms.tuit.uz/assets/images/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="https://lms.tuit.uz/assets/images/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="https://lms.tuit.uz/assets/images/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="https://lms.tuit.uz/assets/images/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://lms.tuit.uz/assets/images/apple-touch-icon-180x180.png" />
+
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/icomoon/style.css" rel="stylesheet">
+    
+    <link href="https://lms.tuit.uz/assets/plugins/switchery/switchery.min.css" rel="stylesheet" />
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap-datepicker/css/datepicker3.css" rel="stylesheet">
+    <link href="https://lms.tuit.uz/assets/plugins/bootstrap-datepicker/css/datepicker.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://lms.tuit.uz/assets/css/select2.min.css">
+    <link rel="stylesheet" href="https://lms.tuit.uz/assets/css/metisMenu.min.css">
+
+        <style>
+        .align-middle {
+            vertical-align: middle !important;
+        }
+
+        .fc-event {
+            min-height: 40px;
+            padding: 6px 4px;
+            white-space: normal !important;
+            font-size: 13px;
+        }
+
+        .fc-event .fc-title {
+            white-space: normal !important;
+            word-wrap: break-word;
+            font-size: 13px;
+        }
+
+        .subje

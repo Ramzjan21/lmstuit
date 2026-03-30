@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, CheckSquare, GraduationCap, BookOpen } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, CheckSquare, GraduationCap, MessageSquare } from 'lucide-react';
 import './Navigation.css';
 
 export default function Navigation() {
@@ -8,7 +8,7 @@ export default function Navigation() {
     { path: '/timetable', icon: CalendarDays, label: 'Jadval' },
     { path: '/tasks', icon: CheckSquare, label: 'Vazifalar' },
     { path: '/grades', icon: GraduationCap, label: 'Baho' },
-    { path: '/library', icon: BookOpen, label: 'Kutubxona' }
+    { path: '/ai-chat', icon: MessageSquare, label: 'AI Chat' }
   ];
 
   return (

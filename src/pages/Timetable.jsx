@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { differenceInCalendarWeeks } from 'date-fns';
-import { MapPin, Phone, MessageCircle, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Preferences } from '@capacitor/preferences';
+import { MapPin, Phone, MessageCircle, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, RefreshCw } from 'lucide-react';
+import { lmsService } from '../services/lmsService';
 
-export default function Timetable() {
+export default function Timetable({ user }) {
   const [isEvenWeek, setIsEvenWeek] = useState(true);
   const [expandedCard, setExpandedCard] = useState(null);
+  const [syncing, setSyncing] = useState(false);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,34 +24,76 @@ export default function Timetable() {
     teacherTelegram: ''
   });
   
-  const [schedule, setSchedule] = useState([
-    {
-      id: 1,
-      name: "Ma'lumotlar bazasi",
-      type: "Ma'ruza",
-      time: "08:30 - 09:50",
-      location: "Bino: Asosiy, 2-qavat, 215-xona",
-      geo: "https://maps.google.com/?q=TUIT,Tashkent",
-      teacher: {
-        name: "Prof. Aliyev D.",
-        phone: "+998 90 123 45 67",
-        telegram: "https://t.me/aliyev_db"
-      }
-    },
-    {
-      id: 2,
-      name: "Web Dasturlash",
-      type: "Amaliyot",
-      time: "10:00 - 11:20",
-      location: "Bino: B, 3-qavat, 301-A",
-      geo: "https://maps.google.com/?q=TUIT,Tashkent",
-      teacher: {
-        name: "O'qit. Karimov S.",
-        phone: "+998 90 987 65 43",
-        telegram: "https://t.me/karimov_web"
-      }
+  const [schedule, setSchedule] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const syncLms = async () => {
+    if (!user?.isLms) return;
+    setSyncing(true);
+    const data = await lmsService.syncSchedule();
+    if (data) {
+      // Flatten the timetable object into the array format used by the component
+      const flattened = [];
+      Object.entries(data).forEach(([day, lessons]) => {
+        lessons.forEach(l => {
+          flattened.push({
+            id: Math.random().toString(36).substr(2, 9),
+            name: l.subject,
+            type: l.type,
+            time: l.time,
+            location: l.room,
+            day: day, // Store day for filtering if needed
+            geo: "https://maps.google.com/?q=TUIT,Tashkent",
+            teacher: { name: l.teacher, phone: '', telegram: '' }
+          });
+        });
+      });
+      setSchedule(flattened);
     }
-  ]);
+    setSyncing(false);
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (user) {
+        const { value } = await Preferences.get({ key: `timetable_${user.email}` });
+        if (value) {
+          setSchedule(JSON.parse(value));
+        } else if (user.isLms) {
+          await syncLms();
+        } else {
+          setSchedule([
+            {
+              id: 1,
+              name: "Ma'lumotlar bazasi",
+              type: "Ma'ruza",
+              time: "08:30 - 09:50",
+              location: "Bino: Asosiy, 2-qavat, 215-xona",
+              geo: "https://maps.google.com/?q=TUIT,Tashkent",
+              teacher: { name: "Prof. Aliyev D.", phone: "+998 90 123 45 67", telegram: "https://t.me/aliyev_db" }
+            },
+            {
+              id: 2,
+              name: "Web Dasturlash",
+              type: "Amaliyot",
+              time: "10:00 - 11:20",
+              location: "Bino: B, 3-qavat, 301-A",
+              geo: "https://maps.google.com/?q=TUIT,Tashkent",
+              teacher: { name: "O'qit. Karimov S.", phone: "+998 90 987 65 43", telegram: "https://t.me/karimov_web" }
+            }
+          ]);
+        }
+      }
+      setLoaded(true);
+    };
+    loadData();
+  }, [user]);
+
+  useEffect(() => {
+    if (loaded && user) {
+      Preferences.set({ key: `timetable_${user.email}`, value: JSON.stringify(schedule) });
+    }
+  }, [schedule, user, loaded]);
 
   useEffect(() => {
     const semesterStart = new Date('2026-02-09'); 
@@ -120,8 +165,20 @@ export default function Timetable() {
     <div>
       <div className="flex-between mb-4">
         <h1 className="text-gradient">Jadval</h1>
-        <div className="glass-panel text-sm font-semibold" style={{ padding: '6px 14px', borderRadius: '20px', background: isEvenWeek ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: isEvenWeek ? 'var(--success)' : 'var(--accent-primary)' }}>
-          {isEvenWeek ? 'Juft Hafta' : 'Toq Hafta'}
+        <div className="flex gap-2">
+          {user?.isLms && (
+            <button 
+              onClick={syncLms} 
+              disabled={syncing}
+              className="glass-panel p-2 flex-center" 
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', border: 'none' }}
+            >
+              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+            </button>
+          )}
+          <div className="glass-panel text-sm font-semibold" style={{ padding: '6px 14px', borderRadius: '20px', background: isEvenWeek ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: isEvenWeek ? 'var(--success)' : 'var(--accent-primary)' }}>
+            {isEvenWeek ? 'Juft Hafta' : 'Toq Hafta'}
+          </div>
         </div>
       </div>
       

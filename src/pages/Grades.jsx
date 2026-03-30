@@ -1,14 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { AlertTriangle, TrendingUp, CheckCircle, GraduationCap, Plus, Minus } from 'lucide-react';
+import { AlertTriangle, TrendingUp, CheckCircle, GraduationCap, Plus, Minus, RefreshCw } from 'lucide-react';
+import { Preferences } from '@capacitor/preferences';
+import { lmsService } from '../services/lmsService';
 
-export default function Grades() {
-  const [subjects, setSubjects] = useState([
-    { id: 1, name: 'Web Dasturlash', credit: 4, score: 85, nb: 2, limit: 12 },
-    { id: 2, name: 'Fizika', credit: 3, score: 72, nb: 5, limit: 8 },
-    { id: 3, name: "Ma'lumotlar bazasi", credit: 4, score: 92, nb: 0, limit: 12 }
-  ]);
+export default function Grades({ user }) {
+  const [subjects, setSubjects] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const syncLms = async () => {
+    if (!user?.isLms) return;
+    setSyncing(true);
+    const data = await lmsService.syncGrades();
+    if (data) {
+      setSubjects(data.map(s => ({
+        id: Math.random().toString(36).substr(2, 9),
+        name: s.name,
+        credit: s.credit,
+        score: s.grade || 0,
+        nb: 0,
+        limit: s.credit * 4 // Example limit based on credits
+      })));
+    }
+    setSyncing(false);
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (user) {
+        const { value } = await Preferences.get({ key: `grades_${user.email}` });
+        if (value) {
+          setSubjects(JSON.parse(value));
+        } else if (user.isLms) {
+          await syncLms();
+        } else {
+          setSubjects([
+            { id: 1, name: 'Web Dasturlash', credit: 4, score: 85, nb: 2, limit: 12 },
+            { id: 2, name: 'Fizika', credit: 3, score: 72, nb: 5, limit: 8 },
+            { id: 3, name: "Ma'lumotlar bazasi", credit: 4, score: 92, nb: 0, limit: 12 }
+          ]);
+        }
+      }
+      setLoaded(true);
+    };
+    loadData();
+  }, [user]);
+
+  useEffect(() => {
+    if (loaded && user) {
+      Preferences.set({ key: `grades_${user.email}`, value: JSON.stringify(subjects) });
+    }
+  }, [subjects, user, loaded]);
   
   const [editingLimitId, setEditingLimitId] = useState(null);
   const [tempLimit, setTempLimit] = useState("");
@@ -58,7 +102,19 @@ export default function Grades() {
 
   return (
     <div>
-      <h1 className="text-gradient mb-1">Baho & Davomat</h1>
+      <div className="flex-between">
+        <h1 className="text-gradient mb-1">Baho & Davomat</h1>
+        {user?.isLms && (
+          <button 
+            onClick={syncLms} 
+            disabled={syncing}
+            className="glass-panel p-2 flex-center" 
+            style={{ background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', border: 'none' }}
+          >
+            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+          </button>
+        )}
+      </div>
       <p className="text-secondary text-sm mb-5">GPA hisobotlari va qoldirilgan darslar (NB)</p>
 
       {/* Main Stats Header */}

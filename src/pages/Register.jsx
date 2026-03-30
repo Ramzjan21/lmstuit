@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, UserPlus } from 'lucide-react';
+import { Preferences } from '@capacitor/preferences';
 
 export default function Register({ onLogin }) {
   const [name, setName] = useState('');
@@ -8,9 +9,22 @@ export default function Register({ onLogin }) {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (name && email && password) {
+      const { value } = await Preferences.get({ key: 'users' });
+      const users = value ? JSON.parse(value) : [];
+      const userExists = users.find(u => u.email === email);
+      
+      if (userExists) {
+        alert("Bu elektron pochta allaqachon ro'yxatdan o'tgan!");
+        return;
+      }
+      
+      const newUser = { name, email, password };
+      users.push(newUser);
+      await Preferences.set({ key: 'users', value: JSON.stringify(users) });
+      
       onLogin({ name, email });
       navigate('/dashboard');
     }

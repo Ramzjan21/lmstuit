@@ -1,17 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Paperclip, Upload, Plus, Edit2, Trash2, X } from 'lucide-react';
 import { differenceInDays, differenceInHours, differenceInMinutes, parseISO, format } from 'date-fns';
+import { Preferences } from '@capacitor/preferences';
 
-export default function Tasks() {
+export default function Tasks({ user }) {
   const [activeTab, setActiveTab] = useState('Barchasi');
   
   const categories = ['Barchasi', 'Uy vazifasi', 'Kurs ishi', 'Laboratoriya', 'Oraliq'];
 
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'Web Dasturlash loyihasi', category: 'Kurs ishi', deadline: new Date(Date.now() + 86400000 * 3).toISOString() }, // 3 days
-    { id: 2, title: 'Fizika 4-Lab', category: 'Laboratoriya', deadline: new Date(Date.now() + 10800000).toISOString() }, // 3 hours
-    { id: 3, title: "Ma'lumotlar bazasi oraliq", category: 'Oraliq', deadline: new Date(Date.now() + 86400000 * 1).toISOString() } // 1 day
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (user) {
+        const { value } = await Preferences.get({ key: `tasks_${user.email}` });
+        if (value) {
+          setTasks(JSON.parse(value));
+        } else {
+          setTasks([
+            { id: 1, title: 'Web Dasturlash loyihasi', category: 'Kurs ishi', deadline: new Date(Date.now() + 86400000 * 3).toISOString() },
+            { id: 2, title: 'Fizika 4-Lab', category: 'Laboratoriya', deadline: new Date(Date.now() + 10800000).toISOString() },
+            { id: 3, title: "Ma'lumotlar bazasi oraliq", category: 'Oraliq', deadline: new Date(Date.now() + 86400000 * 1).toISOString() }
+          ]);
+        }
+      }
+      setLoaded(true);
+    };
+    loadData();
+  }, [user]);
+
+  useEffect(() => {
+    if (loaded && user) {
+      Preferences.set({ key: `tasks_${user.email}`, value: JSON.stringify(tasks) });
+    }
+  }, [tasks, user, loaded]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);

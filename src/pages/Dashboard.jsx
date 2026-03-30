@@ -1,13 +1,42 @@
-import React, { useState } from 'react';
-import { Bell, BellOff, Sun, Moon, MapPin, Target, Mic, FileText, ChevronRight, Clock, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, BellOff, Sun, Moon, MapPin, Target, Mic, FileText, ChevronRight, Clock, LogOut, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Preferences } from '@capacitor/preferences';
 
 export default function Dashboard({ user, onLogout }) {
   const [dndActive, setDndActive] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [todayClasses, setTodayClasses] = useState([]);
+  const [upcomingTasks, setUpcomingTasks] = useState([]);
   const navigate = useNavigate();
 
   const firstName = user?.name ? user.name.split(' ')[0] : 'Talaba';
+
+  useEffect(() => {
+    const loadTodayData = async () => {
+      if (user) {
+        // Load today's classes
+        const { value: scheduleValue } = await Preferences.get({ key: `timetable_${user.email}` });
+        if (scheduleValue) {
+          const schedule = JSON.parse(scheduleValue);
+          const today = new Date();
+          const dayNames = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+          const todayName = dayNames[today.getDay()];
+          const filtered = schedule.filter(c => c.day === todayName).slice(0, 2);
+          setTodayClasses(filtered);
+        }
+
+        // Load upcoming tasks
+        const { value: tasksValue } = await Preferences.get({ key: `tasks_${user.email}` });
+        if (tasksValue) {
+          const tasks = JSON.parse(tasksValue);
+          const urgent = tasks.filter(t => !t.completed).slice(0, 1);
+          setUpcomingTasks(urgent);
+        }
+      }
+    };
+    loadTodayData();
+  }, [user]);
 
   return (
     <div>
@@ -41,14 +70,14 @@ export default function Dashboard({ user, onLogout }) {
       {/* Quick Action Buttons */}
       <div className="flex-between gap-3 mb-6">
         <button 
-          onClick={() => navigate('/library')}
+          onClick={() => navigate('/ai-chat')}
           className="glass-panel p-3 flex-center flex-column gap-2" 
           style={{ flex: 1, padding: '16px', border: '1px solid rgba(99, 102, 241, 0.3)', background: 'linear-gradient(145deg, rgba(99,102,241,0.1) 0%, rgba(0,0,0,0) 100%)', cursor: 'pointer', transition: 'transform 0.2s' }}
         >
           <div style={{ background: 'var(--accent-primary)', padding: '10px', borderRadius: '50%', color: 'white', boxShadow: '0 4px 15px rgba(99,102,241,0.4)' }}>
-            <Mic size={20} />
+            <MessageSquare size={20} />
           </div>
-          <span className="text-xs font-semibold mt-1">Tezkor Qayd</span>
+          <span className="text-xs font-semibold mt-1">AI Yordamchi</span>
         </button>
         <button 
           onClick={() => navigate('/tasks')}
@@ -85,32 +114,35 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Today's Classes Summary */}
       <div className="flex-between items-end mb-3 mt-2">
-        <h2 className="text-lg font-medium">Bugungi darslar <span className="text-xs text-secondary font-normal bg-card px-2 py-1 rounded-full ml-1" style={{background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px'}}>2 ta</span></h2>
+        <h2 className="text-lg font-medium">Bugungi darslar <span className="text-xs text-secondary font-normal bg-card px-2 py-1 rounded-full ml-1" style={{background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px'}}>{todayClasses.length} ta</span></h2>
         <button onClick={() => navigate('/timetable')} style={{background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center'}}>Barchasi <ChevronRight size={14} /></button>
       </div>
       
       <div className="flex-column gap-3 mb-6">
-        <div className="glass-panel p-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: '4px solid var(--accent-primary)' }} onClick={() => navigate('/timetable')}>
-          <div className="flex-between">
-            <span className="font-semibold text-sm">Web Dasturlash (Amaliy)</span>
-            <span className="text-xs font-bold text-accent-primary" style={{background: 'rgba(99,102,241,0.1)', padding: '4px 8px', borderRadius: '6px'}}>10:00 - 11:20</span>
+        {todayClasses.length > 0 ? (
+          todayClasses.map((cls, idx) => (
+            <div key={cls.id} className="glass-panel p-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: `4px solid ${idx === 0 ? 'var(--accent-primary)' : 'var(--success)'}` }} onClick={() => navigate('/timetable')}>
+              <div className="flex-between">
+                <span className="font-semibold text-sm">{cls.name} ({cls.type})</span>
+                <span className="text-xs font-bold" style={{color: idx === 0 ? 'var(--accent-primary)' : 'var(--success)', background: idx === 0 ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: '6px'}}>{cls.time}</span>
+              </div>
+              <div className="flex-between mt-3">
+                <span className="text-xs text-secondary flex-center gap-1"><MapPin size={12} color={idx === 0 ? 'var(--accent-primary)' : 'var(--success)'} /> {cls.location}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="glass-panel p-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: '4px solid var(--accent-primary)' }} onClick={() => navigate('/timetable')}>
+            <div className="flex-between">
+              <span className="font-semibold text-sm">Web Dasturlash (Amaliy)</span>
+              <span className="text-xs font-bold text-accent-primary" style={{background: 'rgba(99,102,241,0.1)', padding: '4px 8px', borderRadius: '6px'}}>10:00 - 11:20</span>
+            </div>
+            <div className="flex-between mt-3">
+              <span className="text-xs text-secondary flex-center gap-1"><MapPin size={12} color="var(--accent-primary)" /> B, 301-A xona</span>
+              <span className="text-xs font-medium bg-card rounded px-2 py-1" style={{background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px'}}>1 soat qoldi</span>
+            </div>
           </div>
-          <div className="flex-between mt-3">
-            <span className="text-xs text-secondary flex-center gap-1"><MapPin size={12} color="var(--accent-primary)" /> B, 301-A xona</span>
-            <span className="text-xs font-medium bg-card rounded px-2 py-1" style={{background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px'}}>1 soat qoldi</span>
-          </div>
-        </div>
-        
-        <div className="glass-panel p-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: '4px solid var(--success)' }} onClick={() => navigate('/timetable')}>
-          <div className="flex-between">
-            <span className="font-semibold text-sm">Fizika (Lab)</span>
-            <span className="text-xs font-bold text-success" style={{background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: '6px'}}>13:30 - 14:50</span>
-          </div>
-          <div className="flex-between mt-3">
-            <span className="text-xs text-secondary flex-center gap-1"><MapPin size={12} color="var(--success)" /> D, 102-xona</span>
-            <span className="text-xs font-medium bg-card rounded px-2 py-1" style={{background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px'}}>4 soat qoldi</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Today's Tasks Summary */}
@@ -119,18 +151,35 @@ export default function Dashboard({ user, onLogout }) {
         <button onClick={() => navigate('/tasks')} style={{background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center'}}>Barchasi <ChevronRight size={14} /></button>
       </div>
       
-      <div className="glass-panel p-4 mb-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: '4px solid var(--warning)', position: 'relative', overflow: 'hidden' }} onClick={() => navigate('/tasks')}>
-        <div style={{position: 'absolute', right: '-15px', bottom: '-15px', opacity: 0.05}}>
-          <FileText size={80} />
-        </div>
-        <div className="relative z-10">
-          <p className="font-semibold text-sm mb-1">Laboratoriya ishi #3 (Fizika)</p>
-          <div className="flex-between mt-3">
-            <span className="text-xs text-secondary bg-card rounded" style={{background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px'}}>Gacha: Bugun 23:59</span>
-            <span className="text-xs font-bold text-warning flex-center gap-1" style={{background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: '4px'}}><Clock size={12} /> Bugun!</span>
+      {upcomingTasks.length > 0 ? (
+        upcomingTasks.map(task => (
+          <div key={task.id} className="glass-panel p-4 mb-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: '4px solid var(--warning)', position: 'relative', overflow: 'hidden' }} onClick={() => navigate('/tasks')}>
+            <div style={{position: 'absolute', right: '-15px', bottom: '-15px', opacity: 0.05}}>
+              <FileText size={80} />
+            </div>
+            <div className="relative z-10">
+              <p className="font-semibold text-sm mb-1">{task.title}</p>
+              <div className="flex-between mt-3">
+                <span className="text-xs text-secondary bg-card rounded" style={{background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px'}}>Gacha: {task.dueDate}</span>
+                <span className="text-xs font-bold text-warning flex-center gap-1" style={{background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: '4px'}}><Clock size={12} /> Tez!</span>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="glass-panel p-4 mb-3 cursor-pointer hover:bg-card-hover transition" style={{ borderLeft: '4px solid var(--warning)', position: 'relative', overflow: 'hidden' }} onClick={() => navigate('/tasks')}>
+          <div style={{position: 'absolute', right: '-15px', bottom: '-15px', opacity: 0.05}}>
+            <FileText size={80} />
+          </div>
+          <div className="relative z-10">
+            <p className="font-semibold text-sm mb-1">Laboratoriya ishi #3 (Fizika)</p>
+            <div className="flex-between mt-3">
+              <span className="text-xs text-secondary bg-card rounded" style={{background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px'}}>Gacha: Bugun 23:59</span>
+              <span className="text-xs font-bold text-warning flex-center gap-1" style={{background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: '4px'}}><Clock size={12} /> Bugun!</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
   );

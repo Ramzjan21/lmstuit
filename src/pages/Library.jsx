@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Save, FileText, Download, Play, Pause, Upload, Trash2 } from 'lucide-react';
+import { Preferences } from '@capacitor/preferences';
 
-export default function Library() {
+export default function Library({ user }) {
   const [activeTab, setActiveTab] = useState('materials'); // 'materials' or 'notes'
   
   const [isRecording, setIsRecording] = useState(false);
@@ -10,11 +11,33 @@ export default function Library() {
   const recognitionRef = useRef(null);
 
   // Materials State
-  const [materials, setMaterials] = useState([
-    { id: 1, title: 'Web Dasturlash (1-Mavzu)', type: 'PDF', size: '2.4 MB', subject: 'Web Dasturlash', url: null },
-    { id: 2, title: 'Fizika laboratoriya qoidalari', type: 'PDF', size: '1.1 MB', subject: 'Fizika', url: null },
-    { id: 3, title: 'Baza arxitekturasi', type: 'PPTX', size: '5.6 MB', subject: "Ma'lumotlar bazasi", url: null }
-  ]);
+  const [materials, setMaterials] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (user) {
+        const { value } = await Preferences.get({ key: `library_${user.email}` });
+        if (value) {
+          setMaterials(JSON.parse(value));
+        } else {
+          setMaterials([
+            { id: 1, title: 'Web Dasturlash (1-Mavzu)', type: 'PDF', size: '2.4 MB', subject: 'Web Dasturlash', url: null },
+            { id: 2, title: 'Fizika laboratoriya qoidalari', type: 'PDF', size: '1.1 MB', subject: 'Fizika', url: null },
+            { id: 3, title: 'Baza arxitekturasi', type: 'PPTX', size: '5.6 MB', subject: "Ma'lumotlar bazasi", url: null }
+          ]);
+        }
+      }
+      setLoaded(true);
+    };
+    loadData();
+  }, [user]);
+
+  useEffect(() => {
+    if (loaded && user) {
+      Preferences.set({ key: `library_${user.email}`, value: JSON.stringify(materials) });
+    }
+  }, [materials, user, loaded]);
   const fileInputRef = useRef(null);
 
   const formatBytes = (bytes, decimals = 1) => {
