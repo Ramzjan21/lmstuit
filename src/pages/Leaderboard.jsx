@@ -57,7 +57,7 @@ export default function Leaderboard({ user }) {
   };
 
   return (
-    <div style={{ paddingBottom: '20px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ paddingBottom: '80px' }}>
       
       {/* Header */}
       <div className="flex-between mb-4">
@@ -140,7 +140,7 @@ export default function Leaderboard({ user }) {
       )}
 
       {/* Rest List Section */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '24px 24px 0 0', padding: '20px', margin: '0 -20px -20px -20px', flex: 1 }}>
+      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '24px 24px 0 0', padding: '20px', margin: '0 -20px 0 -20px' }}>
         {!topRows.length ? (
             <p className="text-center text-secondary text-sm mt-4">{t('leaderboard.empty')}</p>
         ) : (
