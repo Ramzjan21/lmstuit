@@ -60,9 +60,37 @@
             }
         }
     </style>
+
+    <style>
+        @media (max-width: 768px) {
+            body.page-static .page-sidebar {
+                position: static !important;
+                height: auto !important;
+                width: 100% !important;
+            }
+            body.page-static .page-header {
+                position: static !important;
+            }
+            body.page-static .page-content {
+                margin-left: 0 !important;
+                padding-top: 0 !important;
+            }
+            body.page-static .page-container {
+                display: flex;
+                flex-direction: column;
+            }
+            body.page-static .navbar {
+                margin-bottom: 0 !important;
+            }
+            body.page-static #sidebar-menu {
+                height: auto !important;
+                overflow: visible !important;
+            }
+        }
+    </style>
 </head>
 
-<body class="page-sidebar-fixed page-header-fixed">
+<body class="page-static">
     <!-- Page Container -->
     <div class="page-container">
         <!-- Page Sidebar -->
