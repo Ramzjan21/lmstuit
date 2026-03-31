@@ -165,7 +165,8 @@ export default function Freelance({ user }) {
           placeholder="Ism yoki mutaxassislik..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ flex: 1, background: 'none', border: 'none', color: 'white', fontSize: '14px', outline: 'none', padding: '6px' }}
+          className="tg-input"
+          style={{ padding: '10px 14px' }}
         />
       </div>
 
@@ -353,10 +354,8 @@ export default function Freelance({ user }) {
                    <textarea
                      placeholder="Xizmat sifati haqdagi fikringizni yozing..."
                      value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="2"
-                     style={{
-                       width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                       borderRadius: '16px', padding: '14px', color: 'white', outline: 'none', resize: 'none', fontSize: '14px', fontFamily: 'inherit'
-                     }}
+                     className="tg-input"
+                     style={{ resize: 'none' }}
                    />
                  </div>
                  <button
@@ -403,19 +402,19 @@ export default function Freelance({ user }) {
                 <form onSubmit={submitAd} className="flex-column gap-3">
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Qaysi soha? (Masalan: Tarjimon, Web dasturchi, Dizayner)</label>
-                     <input type="text" required value={formTitle} onChange={e => setFormTitle(e.target.value)} disabled={submitting} style={inputStyle} placeholder="Sohangiz nomini yozing..." />
+                     <input type="text" required value={formTitle} onChange={e => setFormTitle(e.target.value)} disabled={submitting} className="tg-input" placeholder="Sohangiz nomini yozing..." />
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Xizmat tavsifi</label>
-                     <textarea required rows={3} value={formDesc} onChange={e => setFormDesc(e.target.value)} disabled={submitting} style={{...inputStyle, resize: 'none'}} placeholder="Qanday xizmat ko'rsata olasiz? Tafsilotlarni yozing..."></textarea>
+                     <textarea required rows={3} value={formDesc} onChange={e => setFormDesc(e.target.value)} disabled={submitting} className="tg-input" style={{resize: 'none'}} placeholder="Qanday xizmat ko'rsata olasiz? Tafsilotlarni yozing..."></textarea>
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Narx / Tolov</label>
-                     <input type="text" required value={formPrice} onChange={e => setFormPrice(e.target.value)} disabled={submitting} style={inputStyle} placeholder="Masalan: 50,000 so'm yoki Kelishilgan holda" />
+                     <input type="text" required value={formPrice} onChange={e => setFormPrice(e.target.value)} disabled={submitting} className="tg-input" placeholder="Masalan: 50,000 so'm yoki Kelishilgan holda" />
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Aloqa uchun (Telegram / Tel)</label>
-                     <input type="text" required value={formContact} onChange={e => setFormContact(e.target.value)} disabled={submitting} style={inputStyle} placeholder="@username yoki +998901234567" />
+                     <input type="text" required value={formContact} onChange={e => setFormContact(e.target.value)} disabled={submitting} className="tg-input" placeholder="@username yoki +998901234567" />
                   </div>
 
                   <button type="submit" disabled={submitting} style={{
@@ -433,7 +432,3 @@ export default function Freelance({ user }) {
   );
 }
 
-const inputStyle = {
-  width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '12px', padding: '12px 14px', color: 'white', outline: 'none', fontSize: '14px'
-};

@@ -111,14 +111,8 @@ export default function Login({ onLogin }) {
                 value={login}
                 onChange={(event) => setLogin(event.target.value)}
                 placeholder={t('login.loginPlaceholder')}
-                className="w-full rounded"
-                style={{
-                  background: 'rgba(0,0,0,0.35)',
-                  border: '1px solid rgba(0,255,200,0.24)',
-                  color: 'white',
-                  padding: '12px 12px 12px 42px',
-                  outline: 'none'
-                }}
+                className="tg-input"
+                style={{ paddingLeft: '44px' }}
               />
             </div>
           </div>
@@ -135,14 +129,8 @@ export default function Login({ onLogin }) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder={t('login.passwordPlaceholder')}
-                className="w-full rounded"
-                style={{
-                  background: 'rgba(0,0,0,0.35)',
-                  border: '1px solid rgba(0,255,200,0.24)',
-                  color: 'white',
-                  padding: '12px 12px 12px 42px',
-                  outline: 'none'
-                }}
+                className="tg-input"
+                style={{ paddingLeft: '44px' }}
               />
             </div>
           </div>

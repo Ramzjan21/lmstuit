@@ -489,3 +489,28 @@ h6 {
 .overflow-hidden {
   overflow: hidden;
 }
+
+/* Telegram Native Input Styling */
+.tg-input {
+  width: 100%;
+  background: var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.05));
+  color: var(--tg-theme-text-color, #ffffff);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px; 
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s ease-in-out;
+}
+
+.tg-input:focus {
+  background: var(--tg-theme-bg-color, rgba(255, 255, 255, 0.08));
+  border-color: var(--tg-theme-button-color, var(--accent-primary));
+  box-shadow: 0 0 0 4px rgba(0, 209, 255, 0.15);
+}
+
+.tg-input::placeholder {
+  color: var(--tg-theme-hint-color, rgba(255, 255, 255, 0.4));
+}
+
