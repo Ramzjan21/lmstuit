@@ -382,6 +382,7 @@ app.get('/api/freelancers', async (req, res) => {
     }
     res.json({ ok: true, freelancers });
   } catch (error) {
+    console.error('Freelancers fetch error:', error);
     sendError(res, error);
   }
 });
@@ -398,8 +399,11 @@ app.post('/api/freelancers', async (req, res) => {
     if (isMongoConnected) {
       await Freelancer.findOneAndUpdate(
         { id: finalEmail },
-        { id: finalEmail, name: finalName, title, description, price, contact },
-        { upsert: true, new: true }
+        { 
+          $set: { name: finalName, title, description, price, contact },
+          $setOnInsert: { rating: 0, reviewCount: 0, createdAt: new Date() }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       return res.json({ ok: true });
     } else {
@@ -462,8 +466,11 @@ app.post('/api/freelancers/:id/reviews', async (req, res) => {
     if (isMongoConnected) {
       await new FreelanceReview(newReview).save();
       const allReviews = await FreelanceReview.find({ freelancerId: id }).lean();
-      const avg = allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length;
-      await Freelancer.findOneAndUpdate({ id }, { rating: avg.toFixed(1), reviewCount: allReviews.length });
+      const avg = allReviews.length > 0 ? (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length) : 0;
+      await Freelancer.findOneAndUpdate(
+         { id }, 
+         { $set: { rating: avg.toFixed(1), reviewCount: allReviews.length } }
+      );
       res.json({ ok: true, reviews: allReviews });
     } else {
       const allR = getFreelanceReviewsLocal();
