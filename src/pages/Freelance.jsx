@@ -61,7 +61,9 @@ export default function Freelance({ user }) {
     try {
       const res = await axios.post(`/api/freelancers/${selectedProfile.id}/reviews`, {
         text: newReview.trim(),
-        rating: newRating
+        rating: newRating,
+        authorEmail: user?.email,
+        authorName: user?.name
       });
       setReviews(res.data.reviews || []);
       setNewReview('');
@@ -86,7 +88,9 @@ export default function Freelance({ user }) {
         title: formTitle,
         description: formDesc,
         price: formPrice,
-        contact: formContact
+        contact: formContact,
+        userEmail: user?.email,
+        userName: user?.name
       });
       setShowAddModal(false);
       await fetchFreelancers();

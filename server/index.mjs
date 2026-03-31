@@ -221,6 +221,19 @@ const saveReviewsLocal = (reviews) => {
   try { fs.writeFileSync(path.join(dataDir, 'reviews.json'), JSON.stringify(reviews, null, 2)); } catch {}
 };
 
+const getFreelancersLocal = () => {
+  try { return JSON.parse(fs.readFileSync(path.join(dataDir, 'freelancers.json'), 'utf8')); } catch { return []; }
+};
+const saveFreelancersLocal = (fl) => {
+  try { fs.writeFileSync(path.join(dataDir, 'freelancers.json'), JSON.stringify(fl, null, 2)); } catch {}
+};
+const getFreelanceReviewsLocal = () => {
+  try { return JSON.parse(fs.readFileSync(path.join(dataDir, 'freelance_reviews.json'), 'utf8')); } catch { return {}; }
+};
+const saveFreelanceReviewsLocal = (revs) => {
+  try { fs.writeFileSync(path.join(dataDir, 'freelance_reviews.json'), JSON.stringify(revs, null, 2)); } catch {}
+};
+
 app.get('/api/teachers', async (req, res) => {
   try {
     let teachers = [];
@@ -364,6 +377,8 @@ app.get('/api/freelancers', async (req, res) => {
     let freelancers = [];
     if (isMongoConnected) {
       freelancers = await Freelancer.find({}).sort({ rating: -1, reviewCount: -1 }).lean();
+    } else {
+      freelancers = getFreelancersLocal().sort((a,b) => (b.rating||0) - (a.rating||0));
     }
     res.json({ ok: true, freelancers });
   } catch (error) {
@@ -371,24 +386,37 @@ app.get('/api/freelancers', async (req, res) => {
   }
 });
 
-app.post('/api/freelancers', requireSession, async (req, res) => {
+app.post('/api/freelancers', async (req, res) => {
   try {
-    const { title, description, price, contact } = req.body;
-    const userEmail = req.session.lmsUser?.login;
-    const userName = req.session.lmsUser?.name;
+    const { title, description, price, contact, userEmail, userName } = req.body;
+    const finalEmail = userEmail || req.session?.lmsUser?.login;
+    const finalName = userName || req.session?.lmsUser?.name || 'Talaba';
     
-    if (!userEmail) return res.status(401).json({ error: 'Auth required' });
+    if (!finalEmail) return res.status(401).json({ error: 'Auth/Login topilmadi, ilovaga kiring' });
     if (!title || !description || !price || !contact) return res.status(400).json({ error: 'Barcha maydonlar majburiy' });
 
     if (isMongoConnected) {
       await Freelancer.findOneAndUpdate(
-        { id: userEmail },
-        { id: userEmail, name: userName, title, description, price, contact },
+        { id: finalEmail },
+        { id: finalEmail, name: finalName, title, description, price, contact },
         { upsert: true, new: true }
       );
       return res.json({ ok: true });
+    } else {
+      const list = getFreelancersLocal();
+      const existing = list.find(f => f.id === finalEmail);
+      if (existing) {
+          existing.name = finalName;
+          existing.title = title;
+          existing.description = description;
+          existing.price = price;
+          existing.contact = contact;
+      } else {
+          list.push({ id: finalEmail, name: finalName, title, description, price, contact, rating: 0, reviewCount: 0 });
+      }
+      saveFreelancersLocal(list);
+      return res.json({ ok: true });
     }
-    res.json({ ok: false, error: 'DB ishlamayapti' });
   } catch (error) {
     sendError(res, error);
   }
@@ -400,6 +428,9 @@ app.get('/api/freelancers/:id/reviews', async (req, res) => {
     let reviews = [];
     if (isMongoConnected) {
       reviews = await FreelanceReview.find({ freelancerId: id }).sort({ date: -1 }).lean();
+    } else {
+      const allR = getFreelanceReviewsLocal();
+      reviews = allR[id] || [];
     }
     res.json({ ok: true, reviews });
   } catch(error) {
@@ -407,35 +438,48 @@ app.get('/api/freelancers/:id/reviews', async (req, res) => {
   }
 });
 
-app.post('/api/freelancers/:id/reviews', requireSession, async (req, res) => {
+app.post('/api/freelancers/:id/reviews', async (req, res) => {
   try {
     const { id } = req.params;
-    const { text, rating } = req.body;
-    const authorEmail = req.session.lmsUser?.login;
-    const authorName = req.session.lmsUser?.name;
+    const { text, rating, authorEmail, authorName } = req.body;
+    const finalAuthorEmail = authorEmail || req.session?.lmsUser?.login;
+    const finalAuthorName = authorName || req.session?.lmsUser?.name || 'Talaba';
 
-    if (!authorEmail) return res.status(401).json({ error: 'Auth required' });
-    if (!text || !rating) return res.status(400).json({ error: 'Matn/Rating majburiy' });
-    if (authorEmail === id) return res.status(400).json({ error: 'O`zingizga baho bera olmaysiz' });
+    if (!finalAuthorEmail) return res.status(401).json({ error: 'Auth/Login topilmadi, ilovaga kiring' });
+    if (!text || !rating) return res.status(400).json({ error: 'Matn va Rating kiritilmadi' });
+    if (finalAuthorEmail === id) return res.status(400).json({ error: 'O`zingizga baho bera olmaysiz' });
+
+    const newReview = {
+      id: Date.now().toString(),
+      freelancerId: id,
+      authorEmail: finalAuthorEmail,
+      authorName: finalAuthorName,
+      text,
+      rating: Number(rating),
+      date: new Date().toISOString()
+    };
 
     if (isMongoConnected) {
-      const newReview = new FreelanceReview({
-        id: Date.now().toString(),
-        freelancerId: id,
-        authorEmail,
-        authorName,
-        text,
-        rating: Number(rating)
-      });
-      await newReview.save();
-
+      await new FreelanceReview(newReview).save();
       const allReviews = await FreelanceReview.find({ freelancerId: id }).lean();
       const avg = allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length;
       await Freelancer.findOneAndUpdate({ id }, { rating: avg.toFixed(1), reviewCount: allReviews.length });
-
       res.json({ ok: true, reviews: allReviews });
     } else {
-      res.json({ ok: false, error: 'DB ishlamayapti' });
+      const allR = getFreelanceReviewsLocal();
+      if (!allR[id]) allR[id] = [];
+      allR[id].push(newReview);
+      saveFreelanceReviewsLocal(allR);
+      
+      const avg = allR[id].reduce((s, r) => s + r.rating, 0) / allR[id].length;
+      const list = getFreelancersLocal();
+      const freelancer = list.find(f => f.id === id);
+      if (freelancer) {
+          freelancer.rating = Number(avg.toFixed(1));
+          freelancer.reviewCount = allR[id].length;
+          saveFreelancersLocal(list);
+      }
+      res.json({ ok: true, reviews: allR[id] });
     }
   } catch(error) {
     sendError(res, error);
