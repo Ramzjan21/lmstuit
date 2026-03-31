@@ -1,216 +1,356 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { AlertTriangle, TrendingUp, CheckCircle, GraduationCap, Plus, Minus, RefreshCw } from 'lucide-react';
-import { Preferences } from '@capacitor/preferences';
+import { AlertTriangle, CheckCircle, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { lmsService } from '../services/lmsService';
+import { getJson, setJson } from '../services/storageService';
+import { useI18n } from '../i18n';
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const scoreToPoint = (score) => {
+  if (score >= 86) return 4;
+  if (score >= 71) return 3;
+  if (score >= 56) return 2;
+  if (score >= 50) return 1;
+  return 0;
+};
+
+const calculateGpa = (subjects) => {
+  if (!subjects.length) return '0.00';
+
+  let credits = 0;
+  let points = 0;
+
+  subjects.forEach((subject) => {
+    const credit = Number(subject.credit || 0);
+    const score = Number(subject.score || 0);
+    credits += credit;
+    points += scoreToPoint(score) * credit;
+  });
+
+  if (!credits) return '0.00';
+  return (points / credits).toFixed(2);
+};
+
+const averageScore = (subjects) => {
+  if (!subjects.length) return 0;
+  const sum = subjects.reduce((acc, subject) => acc + Number(subject.score || 0), 0);
+  return Math.round(sum / subjects.length);
+};
+
+const statusTone = (score) => {
+  if (score >= 86) return { color: 'var(--success)', key: 'grades.high', icon: <TrendingUp size={12} /> };
+  if (score >= 71) return { color: 'var(--info)', key: 'grades.good', icon: <CheckCircle size={12} /> };
+  return { color: 'var(--danger)', key: 'grades.low', icon: <TrendingDown size={12} /> };
+};
+
+const getAttendanceRatio = (subject) => {
+  const nb = Number(subject.nb || 0);
+  const limit = Number(subject.limit || 0);
+  if (!limit) return 0;
+  return clamp((nb / limit) * 100, 0, 100);
+};
 
 export default function Grades({ user }) {
+  const { t, lang } = useI18n();
   const [subjects, setSubjects] = useState([]);
+  const [studyPlan, setStudyPlan] = useState({ gpa: null, semesters: [], activeSemester: '' });
   const [loaded, setLoaded] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [autoRefreshOn, setAutoRefreshOn] = useState(true);
+  const [lastRealtimeSync, setLastRealtimeSync] = useState(null);
 
   const syncLms = async () => {
-    if (!user?.isLms) return;
+    if (!user?.isLms || syncing) return;
+
     setSyncing(true);
-    const data = await lmsService.syncGrades();
-    if (data) {
-      setSubjects(data.map(s => ({
-        id: Math.random().toString(36).substr(2, 9),
-        name: s.name,
-        credit: s.credit,
-        score: s.grade || 0,
-        nb: 0,
-        limit: s.credit * 4 // Example limit based on credits
-      })));
+    try {
+      const data = await lmsService.syncGrades();
+      if (Array.isArray(data)) {
+        setSubjects(data);
+        await setJson(`grades_${user.email}`, data);
+      }
+
+      const plan = await lmsService.syncStudyPlan();
+      if (plan) {
+        const syncMeta = await getJson(`lms_last_sync_${user.email}`, null);
+        const normalizedPlan = {
+          ...plan,
+          activeSemester: plan?.activeSemester || syncMeta?.activeSemester || ''
+        };
+        setStudyPlan(normalizedPlan);
+        await setJson(`studyplan_${user.email}`, normalizedPlan);
+      }
+      setLastRealtimeSync(new Date().toISOString());
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
+  };
+
+  const syncRealtimeAttendance = async () => {
+    if (!user?.isLms || syncing) return;
+    setSyncing(true);
+    try {
+      await lmsService.syncGradesRealtime(user.email);
+
+      const [storedGrades, storedPlan, syncData] = await Promise.all([
+        getJson(`grades_${user.email}`, []),
+        getJson(`studyplan_${user.email}`, { gpa: null, semesters: [], activeSemester: '' }),
+        getJson(`lms_last_sync_${user.email}`, null)
+      ]);
+
+      setSubjects(Array.isArray(storedGrades) ? storedGrades : []);
+      setStudyPlan(storedPlan || { gpa: null, semesters: [], activeSemester: '' });
+      setLastRealtimeSync(syncData?.at || new Date().toISOString());
+    } finally {
+      setSyncing(false);
+    }
   };
 
   useEffect(() => {
     const loadData = async () => {
-      if (user) {
-        const { value } = await Preferences.get({ key: `grades_${user.email}` });
-        if (value) {
-          setSubjects(JSON.parse(value));
-        } else if (user.isLms) {
-          await syncLms();
-        } else {
-          setSubjects([
-            { id: 1, name: 'Web Dasturlash', credit: 4, score: 85, nb: 2, limit: 12 },
-            { id: 2, name: 'Fizika', credit: 3, score: 72, nb: 5, limit: 8 },
-            { id: 3, name: "Ma'lumotlar bazasi", credit: 4, score: 92, nb: 0, limit: 12 }
-          ]);
-        }
-      }
+      if (!user) return;
+      const [stored, storedPlan, syncData] = await Promise.all([
+        getJson(`grades_${user.email}`, []),
+        getJson(`studyplan_${user.email}`, { gpa: null, semesters: [], activeSemester: '' }),
+        getJson(`lms_last_sync_${user.email}`, null)
+      ]);
+      setSubjects(Array.isArray(stored) ? stored : []);
+      setStudyPlan({
+        ...(storedPlan || { gpa: null, semesters: [], activeSemester: '' }),
+        activeSemester: storedPlan?.activeSemester || syncData?.activeSemester || ''
+      });
+      setLastRealtimeSync(syncData?.at || null);
       setLoaded(true);
     };
+
     loadData();
   }, [user]);
 
   useEffect(() => {
-    if (loaded && user) {
-      Preferences.set({ key: `grades_${user.email}`, value: JSON.stringify(subjects) });
+    if (!loaded || !user) return;
+    setJson(`grades_${user.email}`, subjects);
+  }, [subjects, loaded, user]);
+
+  useEffect(() => {
+    if (loaded && user?.isLms && !subjects.length) {
+      syncLms();
     }
-  }, [subjects, user, loaded]);
-  
-  const [editingLimitId, setEditingLimitId] = useState(null);
-  const [tempLimit, setTempLimit] = useState("");
+  }, [loaded, subjects.length, user]);
 
-  // Update NB
-  const updateNb = (id, change) => {
-    setSubjects(prev => prev.map(sub => {
-      if (sub.id === id) {
-        const newNb = Math.max(0, sub.nb + change);
-        return { ...sub, nb: newNb };
-      }
-      return sub;
-    }));
-  };
+  useEffect(() => {
+    if (!loaded || !user?.isLms || !autoRefreshOn) return;
+    const id = setInterval(() => {
+      syncRealtimeAttendance();
+    }, 60000);
+    return () => clearInterval(id);
+  }, [loaded, user, autoRefreshOn]);
 
-  const saveLimit = (id) => {
-    let parsedLimit = parseInt(tempLimit);
-    if(isNaN(parsedLimit) || parsedLimit <= 0) parsedLimit = 12; // fallback
+  const gpa = useMemo(() => calculateGpa(subjects), [subjects]);
+  const avg = useMemo(() => averageScore(subjects), [subjects]);
+  const credits = useMemo(() => subjects.reduce((sum, subject) => sum + Number(subject.credit || 0), 0), [subjects]);
+  const riskyAttendance = useMemo(() => subjects.filter((subject) => getAttendanceRatio(subject) >= 75), [subjects]);
 
-    setSubjects(prev => prev.map(sub => {
-      if (sub.id === id) {
-        return { ...sub, limit: parsedLimit };
-      }
-      return sub;
-    }));
-    setEditingLimitId(null);
-  };
+  const semesterOverview = useMemo(() => {
+    const semesters = Array.isArray(studyPlan?.semesters) ? studyPlan.semesters : [];
+    const activeToken = String(studyPlan?.activeSemester || '').toLowerCase();
+    return semesters
+      .filter((semester) => {
+        if (!activeToken) return true;
+        return String(semester.semester || '').toLowerCase().includes(activeToken) ||
+          activeToken.includes(String(semester.semester || '').toLowerCase());
+      })
+      .map((semester) => {
+        const subjects = Array.isArray(semester.subjects) ? semester.subjects : [];
+        const graded = subjects.filter((subject) => subject.grade5 !== null && subject.grade5 !== undefined);
+        const avg5 = graded.length
+          ? (graded.reduce((sum, subject) => sum + Number(subject.grade5 || 0), 0) / graded.length).toFixed(2)
+          : null;
 
-  // Calculate GPA roughly (A: 4, B: 3, C: 2)
-  const calculateGPA = () => {
-    let totalPoints = 0;
-    let totalCredits = 0;
-    
-    subjects.forEach(sub => {
-      let gpaPoint = 0;
-      if (sub.score >= 90) gpaPoint = 4.0;
-      else if (sub.score >= 80) gpaPoint = 3.0;
-      else if (sub.score >= 70) gpaPoint = 2.0;
-      else gpaPoint = 1.0;
-      
-      totalPoints += gpaPoint * sub.credit;
-      totalCredits += sub.credit;
-    });
-    
-    return totalCredits === 0 ? 0 : (totalPoints / totalCredits).toFixed(2);
-  };
+        return {
+          semester: semester.semester,
+          subjectCount: subjects.length,
+          credits: semester.credits || subjects.reduce((sum, subject) => sum + Number(subject.credit || 0), 0),
+          avg5
+        };
+      })
+      .slice(0, 3);
+  }, [studyPlan]);
 
   return (
     <div>
-      <div className="flex-between">
-        <h1 className="text-gradient mb-1">Baho & Davomat</h1>
-        {user?.isLms && (
-          <button 
-            onClick={syncLms} 
-            disabled={syncing}
-            className="glass-panel p-2 flex-center" 
-            style={{ background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', border: 'none' }}
-          >
-            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-          </button>
-        )}
-      </div>
-      <p className="text-secondary text-sm mb-5">GPA hisobotlari va qoldirilgan darslar (NB)</p>
-
-      {/* Main Stats Header */}
-      <div className="flex-between gap-4 mb-6">
-        <div className="glass-panel p-4 flex-center flex-column w-full" style={{ flex: 1 }}>
-          <span className="text-sm text-secondary mb-1">Umumiy GPA</span>
-          <span className="text-3xl font-bold text-gradient">{calculateGPA()}</span>
-          <span className="text-xs text-success flex-center gap-1 mt-1"><TrendingUp size={12} /> Yuqori o'zlashtirish</span>
+      <div className="flex-between mb-2">
+        <h1 className="text-gradient">{t('grades.title')}</h1>
+        <div className="flex-center gap-2">
+          {user?.isLms && (
+            <button
+              onClick={syncRealtimeAttendance}
+              disabled={syncing}
+              className="glass-panel p-2 flex-center"
+              style={{ border: 'none', background: 'rgba(0,209,255,0.12)', color: 'var(--accent-primary)', cursor: 'pointer' }}
+              title={t('common.sync')}
+            >
+              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+            </button>
+          )}
+          {user?.isLms && (
+            <button
+              onClick={() => setAutoRefreshOn((prev) => !prev)}
+              className="glass-panel p-2"
+              style={{
+                border: 'none',
+                background: autoRefreshOn ? 'rgba(34,197,94,0.16)' : 'rgba(239,68,68,0.14)',
+                color: autoRefreshOn ? 'var(--success)' : 'var(--danger)',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 700
+              }}
+              title="Auto refresh"
+            >
+              {autoRefreshOn ? t('grades.liveOn') : t('grades.liveOff')}
+            </button>
+          )}
         </div>
       </div>
 
-      <h2 className="text-lg font-medium mb-3">Fanlar bo'yicha ko'rsatkich</h2>
-      
-      <div className="flex-column gap-3">
-        {subjects.map(sub => {
-          const nbPercentage = (sub.nb / sub.limit) * 100;
-          const isWarning = nbPercentage > 75; // 75% of limit reached
+      <p className="text-secondary text-sm mb-1">{t('grades.subtitle')}</p>
+      <p className="text-xs text-secondary mb-1">{t('grades.activeSemester')}: {studyPlan?.activeSemester || t('common.unknown')}</p>
+      <p className="text-xs text-secondary mb-4">{t('grades.lastLiveSync')}: {lastRealtimeSync ? new Date(lastRealtimeSync).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'uz-UZ') : '--:--'}</p>
 
-          return (
-            <div key={sub.id} className="glass-panel p-4 pb-5">
-              <div className="flex-between mb-3">
-                <span className="font-semibold">{sub.name}</span>
-                <span className="text-xs font-bold" style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
-                  {sub.credit} Kredit
-                </span>
-              </div>
-              
-              <div className="flex-between items-center" style={{ gap: '20px' }}>
-                {/* Score Circular Bar */}
-                <div style={{ width: '60px', height: '60px' }}>
-                  <CircularProgressbar 
-                    value={sub.score} 
-                    text={`${sub.score}`} 
-                    styles={buildStyles({
-                      textColor: 'var(--text-primary)',
-                      pathColor: sub.score >= 85 ? 'var(--success)' : (sub.score >= 70 ? 'var(--info)' : 'var(--danger)'),
-                      trailColor: 'var(--bg-card-hover)',
-                      textSize: '24px'
-                    })}
-                  />
-                </div>
-                
-                {/* NB Status Bar */}
-                <div style={{ flex: 1 }}>
-                  <div className="flex-between mb-1">
-                    <span className="text-xs text-secondary flex-center gap-1">Davomat (NB)</span>
-                    <div className="flex-center gap-2">
-                       <button onClick={() => updateNb(sub.id, -2)} style={{background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)', borderRadius: '6px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center'}}><Minus size={14}/></button>
-                       
-                       {editingLimitId === sub.id ? (
-                         <div className="flex-center gap-1">
-                           <span className="text-xs font-bold text-primary">{sub.nb} / </span>
-                           <input 
-                             type="number" 
-                             value={tempLimit} 
-                             onChange={(e) => setTempLimit(e.target.value)}
-                             onBlur={() => saveLimit(sub.id)}
-                             onKeyDown={(e) => e.key === 'Enter' && saveLimit(sub.id)}
-                             autoFocus
-                             style={{width: '35px', background: 'var(--bg-main)', color: 'white', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', textAlign: 'center', padding: '4px'}}
-                           />
-                         </div>
-                       ) : (
-                         <span 
-                           className="text-xs font-bold cursor-pointer" 
-                           onClick={() => { setEditingLimitId(sub.id); setTempLimit(sub.limit.toString()); }}
-                           style={{ color: isWarning ? 'var(--danger)' : 'var(--text-primary)', borderBottom: '1px dashed var(--text-tertiary)', padding: '0 4px' }}
-                           title="Limitni o'zgartirish"
-                         >
-                           {sub.nb} / {sub.limit} soat
-                         </span>
-                       )}
-
-                       <button onClick={() => updateNb(sub.id, 2)} style={{background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)', borderRadius: '6px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center'}}><Plus size={14}/></button>
-                    </div>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'var(--bg-card-hover)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ 
-                      width: `${Math.min(nbPercentage, 100)}%`, 
-                      height: '100%', 
-                      background: isWarning ? 'var(--danger)' : 'var(--success)',
-                      transition: 'width 1s ease-out'
-                    }}></div>
-                  </div>
-                  {isWarning && (
-                    <p className="text-xs text-danger mt-1 flex-center gap-1" style={{justifyContent: 'flex-start'}}>
-                      <AlertTriangle size={12} /> Limitga yaqinlashdingiz!
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '14px' }}>
+        <div className="glass-panel p-3" style={{ background: 'rgba(99,102,241,0.12)' }}>
+          <p className="text-xs text-secondary">{t('grades.gpa')}</p>
+          <p className="font-semibold mt-1" style={{ color: 'var(--accent-primary)' }}>
+            {gpa}
+          </p>
+        </div>
+        <div className="glass-panel p-3" style={{ background: 'rgba(16,185,129,0.12)' }}>
+          <p className="text-xs text-secondary">{t('grades.avgScore')}</p>
+          <p className="font-semibold mt-1" style={{ color: 'var(--success)' }}>
+            {avg}
+          </p>
+        </div>
+        <div className="glass-panel p-3" style={{ background: 'rgba(245,158,11,0.12)' }}>
+          <p className="text-xs text-secondary">{t('grades.credits')}</p>
+          <p className="font-semibold mt-1" style={{ color: 'var(--warning)' }}>
+            {credits}
+          </p>
+        </div>
       </div>
 
+      {riskyAttendance.length > 0 && (
+        <div
+          className="glass-panel p-3 mb-4"
+          style={{ border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.12)' }}
+        >
+          <p className="font-semibold text-sm flex-center" style={{ justifyContent: 'flex-start', gap: '6px' }}>
+            <AlertTriangle size={14} color="var(--danger)" /> {t('grades.warning')}
+          </p>
+          <p className="text-xs text-secondary mt-1">
+            {t('grades.warningDesc', { count: riskyAttendance.length })}
+          </p>
+        </div>
+      )}
+
+      {!!semesterOverview.length && (
+        <div className="glass-panel p-3 mb-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <p className="font-semibold text-sm mb-2">{t('grades.semesterOverview')}</p>
+          <div className="flex-column gap-2">
+            {semesterOverview.map((semester) => (
+              <div key={semester.semester} className="flex-between" style={{ gap: '8px' }}>
+                <div>
+                  <p className="text-xs font-medium">{semester.semester}</p>
+                  <p className="text-xs text-secondary">{semester.subjectCount} {lang === 'ru' ? 'предметов' : 'fan'} | {semester.credits} {lang === 'ru' ? 'кредитов' : 'kredit'}</p>
+                </div>
+                <p className="text-xs" style={{ color: semester.avg5 ? 'var(--success)' : 'var(--text-secondary)' }}>
+                  {semester.avg5 ? `Avg: ${semester.avg5}` : t('grades.noGrade')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-column gap-3">
+        {subjects.length ? (
+          subjects.map((subject) => {
+            const score = Number(subject.score || 0);
+            const ratio = getAttendanceRatio(subject);
+            const tone = statusTone(score);
+            const limit = Number(subject.limit || 0) || (subject.credit ? Math.max(4, Number(subject.credit) + 3) : 7);
+            const nb = Number(subject.nb || 0);
+
+            return (
+              <div key={subject.id} className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                <div className="flex-between mb-3" style={{ alignItems: 'flex-start', gap: '10px' }}>
+                  <div>
+                    <p className="font-semibold text-sm">{subject.name}</p>
+                    <p className="text-xs text-secondary mt-1">
+                      {subject.semester ? `${subject.semester} | ` : ''}
+                      {subject.credit || 0} {lang === 'ru' ? 'кредитов' : 'kredit'}
+                    </p>
+                  </div>
+                  <span
+                    className="text-xs flex-center"
+                    style={{
+                      gap: '4px',
+                      color: tone.color,
+                      fontWeight: 700,
+                      background: 'rgba(255,255,255,0.08)',
+                      padding: '4px 8px',
+                      borderRadius: '999px'
+                    }}
+                  >
+                    {tone.icon}
+                      {t(tone.key)}
+                    </span>
+                  </div>
+
+                <div className="flex-between" style={{ gap: '16px', alignItems: 'center' }}>
+                  <div style={{ width: '70px', height: '70px' }}>
+                    <CircularProgressbar
+                      value={score}
+                      text={`${score}`}
+                      styles={buildStyles({
+                        pathColor: tone.color,
+                        textColor: 'var(--text-primary)',
+                        trailColor: 'rgba(255,255,255,0.12)',
+                        textSize: '24px'
+                      })}
+                    />
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <div className="flex-between mb-1">
+                      <p className="text-xs text-secondary">{t('grades.attendance')}</p>
+                      <p className="text-xs" style={{ color: ratio >= 75 ? 'var(--danger)' : 'var(--text-primary)', fontWeight: 700 }}>
+                        {nb} / {limit}
+                      </p>
+                    </div>
+
+                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.12)', borderRadius: '6px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${ratio}%`,
+                          height: '100%',
+                          background: ratio >= 75 ? 'var(--danger)' : ratio >= 50 ? 'var(--warning)' : 'var(--success)'
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-xs text-secondary mt-2">{t('grades.attendanceRealtime')}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="glass-panel p-4">
+            <p className="text-center text-secondary text-sm">{t('grades.noSubjects')}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

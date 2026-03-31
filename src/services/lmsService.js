@@ -1,302 +1,321 @@
-import { CapacitorHttp } from '@capacitor/core';
-import { Preferences } from '@capacitor/preferences';
+import { getJson, removeKey, setJson } from './storageService';
 
-const LMS_URL = 'https://lms.tuit.uz';
+const DEFAULT_PROXY_BASE = import.meta.env.VITE_LMS_PROXY_URL || '/api/lms';
 
-// Helper to strip HTML tags
-const stripHtml = (html) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const requestJson = async (path, options = {}) => {
+  const response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
+    credentials: 'include',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
 
-// Helper to build cookie string from header
-const parseCookies = (headers) => {
-  const raw = headers['Set-Cookie'] || headers['set-cookie'] || '';
-  if (Array.isArray(raw)) return raw.map(c => c.split(';')[0]).join('; ');
-  return raw.split(',').map(c => c.split(';')[0]).join('; ');
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = body?.error || body?.message || 'LMS so`rovda xatolik yuz berdi';
+    throw new Error(message);
+  }
+
+  return body;
+};
+
+let cachedBundle = null;
+let cachedAt = 0;
+
+const CACHE_MS = 15000;
+
+const getBundle = async () => {
+  const now = Date.now();
+  if (cachedBundle && now - cachedAt < CACHE_MS) {
+    return cachedBundle;
+  }
+  const data = await requestJson('/sync-all');
+  cachedBundle = data;
+  cachedAt = now;
+  return data;
+};
+
+const clearBundleCache = () => {
+  cachedBundle = null;
+  cachedAt = 0;
+};
+
+const sortByDeadline = (tasks = []) => {
+  return [...tasks].sort((a, b) => new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime());
+};
+
+const updateLeaderboard = async ({ userEmail, profile, grades }) => {
+  const items = await getJson('leaderboard_users', []);
+  const current = Array.isArray(items) ? items : [];
+  const validGrades = Array.isArray(grades) ? grades : [];
+
+  if (!validGrades.length) return;
+
+  const avgScore = Math.round(validGrades.reduce((sum, item) => sum + Number(item.score || 0), 0) / validGrades.length);
+  const attendanceScores = validGrades
+    .filter((item) => Number(item.limit || 0) > 0)
+    .map((item) => 100 - Math.min(100, Math.max(0, (Number(item.nb || 0) / Number(item.limit || 1)) * 100)));
+
+  const attendanceScore = attendanceScores.length
+    ? Math.round(attendanceScores.reduce((sum, item) => sum + item, 0) / attendanceScores.length)
+    : 0;
+
+  const creditSum = validGrades.reduce((sum, item) => sum + Number(item.credit || 0), 0);
+  const pointSum = validGrades.reduce((sum, item) => {
+    const score = Number(item.score || 0);
+    const credit = Number(item.credit || 0);
+    if (score >= 86) return sum + 4 * credit;
+    if (score >= 71) return sum + 3 * credit;
+    if (score >= 56) return sum + 2 * credit;
+    if (score >= 50) return sum + 1 * credit;
+    return sum;
+  }, 0);
+
+  const entry = {
+    userEmail,
+    name: profile?.fullName || profile?.firstName || 'Talaba',
+    group: profile?.group || '',
+    course: profile?.course || 0,
+    direction: profile?.direction || '',
+    subjectCount: validGrades.length,
+    avgScore,
+    attendanceScore,
+    gpa: creditSum ? Number((pointSum / creditSum).toFixed(2)) : 0,
+    rating: Math.round(avgScore * 0.7 + attendanceScore * 0.3),
+    updatedAt: new Date().toISOString()
+  };
+
+  const updated = [
+    ...current.filter((item) => item.userEmail !== userEmail),
+    entry
+  ].sort((a, b) => {
+    if (b.rating !== a.rating) return b.rating - a.rating;
+    if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
+    return b.attendanceScore - a.attendanceScore;
+  });
+
+  await setJson('leaderboard_users', updated.slice(0, 200));
+
+  try {
+    await fetch('/api/leaderboard', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+  } catch (e) {
+    console.warn('Backend leaderboard sync failed:', e.message);
+  }
 };
 
 export const lmsService = {
   async login(login, password) {
     try {
-      // Step 1: GET login page to get fresh CSRF token + cookies
-      const page1 = await CapacitorHttp.get({ url: `${LMS_URL}/auth/login` });
-      const initCookies = parseCookies(page1.headers);
-      const tokenMatch = page1.data.match(/name="_token"\s+value="([^"]+)"/);
-      const _token = tokenMatch ? tokenMatch[1] : '';
-
-      // Step 2: POST credentials
-      const postResp = await CapacitorHttp.post({
-        url: `${LMS_URL}/auth/login`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Cookie': initCookies,
-        },
-        data: `_token=${encodeURIComponent(_token)}&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`,
-        disableRedirects: true,
+      const data = await requestJson('/login', {
+        method: 'POST',
+        body: JSON.stringify({ login, password })
       });
 
-      const sessionCookies = parseCookies(postResp.headers);
-      const allCookies = initCookies + '; ' + sessionCookies;
-
-      // Verify login by hitting dashboard
-      const dashCheck = await CapacitorHttp.get({
-        url: `${LMS_URL}/dashboard/news`,
-        headers: { 'Cookie': allCookies }
-      });
-
-      // If we see the login form again, we failed
-      if (dashCheck.data.includes('name="login"') || dashCheck.data.includes('/auth/login')) {
-        return { success: false, error: "Login yoki parol noto'g'ri!" };
-      }
-
-      // Save session cookies and user info
-      await Preferences.set({ key: 'lms_cookies', value: allCookies });
-
-      // Extract student full name from dashboard
-      const nameMatch = dashCheck.data.match(/class="page-header-title"[^>]*>\s*([\s\S]*?)\s*<\/h4>/);
-      const dashboardName = nameMatch ? stripHtml(nameMatch[1]) : login;
-
-      await Preferences.set({ key: 'lms_user', value: JSON.stringify({ login, name: dashboardName }) });
-
-      return { success: true, name: dashboardName };
+      await setJson('lms_user', { login, name: data?.name || login });
+      return { success: true, name: data?.name || login };
     } catch (error) {
-      console.error('LMS Login error:', error);
-      return { success: false, error: 'Server bilan aloqa yo\'qligi. Internet tekshiring.' };
+      return { success: false, error: error.message || "Login yoki parol noto'g'ri" };
     }
   },
 
   async getCookies() {
-    const { value } = await Preferences.get({ key: 'lms_cookies' });
-    return value || '';
+    return '';
   },
 
-  // =====================================================
-  //  SCHEDULE: Parse initCalendar JSON from /student/schedule
-  // =====================================================
-  async syncSchedule() {
+  async syncProfile() {
     try {
-      const cookies = await this.getCookies();
-      const resp = await CapacitorHttp.get({
-        url: `${LMS_URL}/student/schedule`,
-        headers: { 'Cookie': cookies }
-      });
-
-      const match = resp.data.match(/initCalendar\(\s*(\[[\s\S]*?\])\s*\)/);
-      if (!match) return null;
-
-      const events = JSON.parse(match[1]);
-      return this._parseScheduleToApp(events);
-    } catch (e) {
-      console.error('syncSchedule error:', e);
+      const data = await getBundle();
+      return data?.profile || null;
+    } catch (error) {
+      console.error('syncProfile error:', error);
       return null;
     }
   },
 
-  _parseScheduleToApp(events) {
-    const DAYS_UZ = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
-    const schedule = {};
-
-    events.forEach(ev => {
-      const date = new Date(ev.start);
-      const dayName = DAYS_UZ[date.getDay()];
-      if (!schedule[dayName]) schedule[dayName] = [];
-
-      const parts = ev.title.split('\n');
-      const room = parts[0] ? parts[0].replace(/[()]/g, '').trim() : '?';
-      const rawSubject = parts[1] || ev.title;
-      // Separate name from code: "Fizika 2 (4 kr)-PHY207-3" → "Fizika 2"
-      const subjectName = rawSubject.split('-')[0].split('(')[0].trim();
-
-      const hour = date.getHours();
-      const min = date.getMinutes();
-      const time = `${hour.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}`;
-
-      // end time (typically 1h20m or 1h30m)
-      const endDate = new Date(date.getTime() + 80 * 60000);
-      const endTime = `${endDate.getHours().toString().padStart(2,'0')}:${endDate.getMinutes().toString().padStart(2,'0')}`;
-
-      let type = "Ma'ruza";
-      if (ev.className?.includes('brown')) type = "Laboratoriya";
-      else if (ev.type === 2) type = "Amaliyot";
-
-      schedule[dayName].push({
-        id: `${dayName}_${time}_${Math.random().toString(36).substr(2,5)}`,
-        name: subjectName,
-        type,
-        time: `${time} - ${endTime}`,
-        location: `Xona: ${room}`,
-        geo: "https://maps.google.com/?q=TUIT,Toshkent",
-        teacher: { name: "LMS", phone: '', telegram: '' },
-        dateISO: ev.start
-      });
-    });
-
-    return schedule;
+  async syncSchedule() {
+    try {
+      const data = await getBundle();
+      return Array.isArray(data?.schedule) ? data.schedule : [];
+    } catch (error) {
+      console.error('syncSchedule error:', error);
+      return [];
+    }
   },
 
-  // =====================================================
-  //  SUBJECTS + GRADES: Parse /student/subject
-  // =====================================================
-  async syncSubjects() {
+  async syncDeadlines() {
     try {
-      const cookies = await this.getCookies();
-      const resp = await CapacitorHttp.get({
-        url: `${LMS_URL}/student/subject`,
-        headers: { 'Cookie': cookies }
-      });
+      const data = await getBundle();
+      return Array.isArray(data?.tasks) ? sortByDeadline(data.tasks) : [];
+    } catch (error) {
+      console.error('syncDeadlines error:', error);
+      return [];
+    }
+  },
 
-      return this._parseSubjects(resp.data);
-    } catch (e) {
-      console.error('syncSubjects error:', e);
+  async syncStudyPlan() {
+    try {
+      const data = await getBundle();
+      const source = data?.studyPlan || data;
+      return {
+        gpa: source?.gpa ?? null,
+        semesters: Array.isArray(source?.semesters) ? source.semesters : [],
+        subjects: Array.isArray(source?.subjects) ? source.subjects : [],
+        totalCredits: Number(source?.totalCredits || 0),
+        activeSemester: data?.activeSemester || source?.activeSemester || ''
+      };
+    } catch (error) {
+      console.error('syncStudyPlan error:', error);
+      return { gpa: null, semesters: [], subjects: [], totalCredits: 0 };
+    }
+  },
+
+  async syncFinals() {
+    try {
+      const data = await getBundle();
+      const source = data?.finals || data;
+      return {
+        semesterId: source?.semesterId || null,
+        semesterLabel: source?.semesterLabel || '',
+        rows: Array.isArray(source?.rows) ? source.rows : []
+      };
+    } catch (error) {
+      console.error('syncFinals error:', error);
+      return { semesterId: null, semesterLabel: '', rows: [] };
+    }
+  },
+
+  async syncCourses() {
+    try {
+      const data = await getBundle();
+      if (Array.isArray(data?.courses)) return data.courses;
+      if (Array.isArray(data?.coursesPreview)) return data.coursesPreview;
+      return [];
+    } catch (error) {
+      console.error('syncCourses error:', error);
       return [];
     }
   },
 
   async syncGrades() {
-    return this.syncSubjects();
-  },
-
-  _parseSubjects(html) {
-    const subjects = [];
-    // Match subject card blocks
-    // They look like: <h4 ...>Fanname</h4>...(N kredit)
-    const blockRx = /<div[^>]+class="[^"]*subject[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
-    const nameRx = /<h4[^>]*>([\s\S]*?)<\/h4>/i;
-    const creditRx = /\((\d+)\s*kr/i;
-    const scoreRx = /(\d{1,3})\s*ball/i;
-
-    // Approach: split by anchor links to subject show pages
-    const linkRx = /href="https:\/\/lms\.tuit\.uz\/student\/my-courses\/show\/(\d+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let m;
-    while ((m = linkRx.exec(html)) !== null) {
-      const id = m[1];
-      const inner = m[2];
-      const name = stripHtml(inner).trim();
-      if (name.length < 2) continue;
-
-      // Look for credit in nearby context
-      const context = html.substring(Math.max(0, m.index - 500), m.index + 500);
-      const creditM = creditRx.exec(context);
-      const scoreM = scoreRx.exec(context);
-
-      subjects.push({
-        id: parseInt(id),
-        name: name.split('(')[0].trim(),
-        credit: creditM ? parseInt(creditM[1]) : 4,
-        score: scoreM ? parseInt(scoreM[1]) : 0,
-        nb: 0,
-        limit: 12,
-        lmsId: id
-      });
-    }
-
-    // Deduplicate by lmsId
-    const seen = new Set();
-    return subjects.filter(s => {
-      if (seen.has(s.lmsId)) return false;
-      seen.add(s.lmsId);
-      return true;
-    });
-  },
-
-  // =====================================================
-  //  DEADLINES / TASKS: Parse /student/deadlines
-  // =====================================================
-  async syncDeadlines() {
     try {
-      const cookies = await this.getCookies();
-      const resp = await CapacitorHttp.get({
-        url: `${LMS_URL}/student/deadlines`,
-        headers: { 'Cookie': cookies }
-      });
-
-      return this._parseDeadlines(resp.data);
-    } catch (e) {
-      console.error('syncDeadlines error:', e);
+      const data = await getBundle();
+      return Array.isArray(data?.grades) ? data.grades : [];
+    } catch (error) {
+      console.error('syncGrades error:', error);
       return [];
     }
   },
 
-  _parseDeadlines(html) {
-    const tasks = [];
-    // Tasks appear as table rows: <tr> ... subject name ... deadline date ... status
-    // Pattern works as: look for all <tr> with date pattern
-    const trRx = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-    const dateRx = /(\d{4}-\d{2}-\d{2}|\d{2}\.\d{2}\.\d{4})/;
-    
-    let m;
-    while ((m = trRx.exec(html)) !== null) {
-      const row = m[1];
-      const dateM = dateRx.exec(row);
-      if (!dateM) continue;
-      
-      const text = stripHtml(row);
-      if (text.length < 5) continue;
+  async syncGradesRealtime(userEmail) {
+    clearBundleCache();
+    const data = await requestJson('/grades/realtime');
+    const grades = Array.isArray(data?.grades) ? data.grades : [];
+    const activeSemester = data?.activeSemester || '';
+    const studyPlan = data?.studyPlan || null;
 
-      // Clean up the text
-      const parts = text.split(/\s{2,}/).filter(p => p.trim().length > 0);
-      const title = parts[0] || 'Vazifa';
-      const dateStr = dateM[1];
-
-      // Convert date format
-      let dueDate = dateStr;
-      if (dateStr.includes('.')) {
-        const [d, mo, y] = dateStr.split('.');
-        dueDate = `${y}-${mo}-${d}`;
-      }
-
-      tasks.push({
-        id: Date.now() + Math.random(),
-        title: title.substring(0, 80),
-        description: parts.slice(1).join(' ').substring(0, 200),
-        dueDate,
-        completed: text.toLowerCase().includes('qabul qilindi') || text.toLowerCase().includes('bajarildi'),
-        priority: 'medium',
-        source: 'lms'
-      });
-    }
-
-    return tasks.slice(0, 50); // max 50 tasks
-  },
-
-  // =====================================================
-  //  FULL SYNC: Run all syncs and save to Preferences
-  // =====================================================
-  async syncAll(userEmail) {
-    console.log('Starting full LMS sync...');
-
-    const [scheduleData, subjectsData, deadlinesData] = await Promise.all([
-      this.syncSchedule(),
-      this.syncSubjects(),
-      this.syncDeadlines()
+    const [prevSync, profile] = await Promise.all([
+      getJson(`lms_last_sync_${userEmail}`, null),
+      getJson(`profile_${userEmail}`, null)
     ]);
 
-    const results = {};
+    await Promise.all([
+      setJson(`grades_${userEmail}`, grades),
+      ...(studyPlan
+        ? [
+            setJson(`studyplan_${userEmail}`, {
+              ...studyPlan,
+              activeSemester: studyPlan?.activeSemester || activeSemester
+            })
+          ]
+        : []),
+      setJson(`lms_last_sync_${userEmail}`, {
+        ...(prevSync || {}),
+        at: new Date().toISOString(),
+        activeSemester,
+        counts: {
+          ...(prevSync?.counts || {}),
+          grades: grades.length
+        }
+      })
+    ]);
 
-    if (scheduleData) {
-      // Flatten schedule to array format for Timetable component
-      const scheduleArr = [];
-      Object.entries(scheduleData).forEach(([day, lessons]) => {
-        lessons.forEach(l => scheduleArr.push({ ...l, day }));
-      });
-      await Preferences.set({ key: `timetable_${userEmail}`, value: JSON.stringify(scheduleArr) });
-      results.schedule = scheduleArr.length;
+    await updateLeaderboard({ userEmail, profile, grades });
+
+    return {
+      grades: grades.length,
+      activeSemester
+    };
+  },
+
+  async syncAll(userEmail) {
+    clearBundleCache();
+    const data = await requestJson('/sync-all');
+    cachedBundle = data;
+    cachedAt = Date.now();
+
+    const profile = data?.profile || {};
+    const schedule = Array.isArray(data?.schedule) ? data.schedule : [];
+    const tasks = Array.isArray(data?.tasks) ? sortByDeadline(data.tasks) : [];
+    const grades = Array.isArray(data?.grades) ? data.grades : [];
+    const studyPlan = data?.studyPlan || { gpa: null, semesters: [], subjects: [] };
+    const finals = data?.finals || { semesterId: null, semesterLabel: '', rows: [] };
+    const activeSemester = data?.activeSemester || finals?.semesterLabel || '';
+
+    await Promise.all([
+      setJson(`profile_${userEmail}`, profile),
+      setJson(`timetable_${userEmail}`, schedule),
+      setJson(`tasks_${userEmail}`, tasks),
+      setJson(`grades_${userEmail}`, grades),
+      setJson(`studyplan_${userEmail}`, {
+        ...studyPlan,
+        activeSemester
+      }),
+      setJson(`finals_${userEmail}`, finals),
+      setJson(`lms_last_sync_${userEmail}`, {
+        at: new Date().toISOString(),
+        activeSemester,
+        counts: {
+          profile: profile ? 1 : 0,
+          schedule: schedule.length,
+          tasks: tasks.length,
+          grades: grades.length,
+          finals: Array.isArray(finals?.rows) ? finals.rows.length : 0,
+          courses: Number(data?.coursesCount || 0)
+        }
+      })
+    ]);
+
+    await updateLeaderboard({ userEmail, profile, grades });
+
+    await setJson(`courses_${userEmail}`, Array.isArray(data?.coursesPreview) ? data.coursesPreview : []);
+
+    return {
+      profile: profile ? 1 : 0,
+      schedule: schedule.length,
+      tasks: tasks.length,
+      grades: grades.length,
+      finals: Array.isArray(finals?.rows) ? finals.rows.length : 0,
+      courses: Number(data?.coursesCount || 0),
+      activeSemester
+    };
+  },
+
+  async logout() {
+    try {
+      await requestJson('/logout', { method: 'POST' });
+    } catch (error) {
+      console.warn('LMS logout warning:', error.message);
     }
 
-    if (subjectsData?.length > 0) {
-      await Preferences.set({ key: `grades_${userEmail}`, value: JSON.stringify(subjectsData) });
-      results.subjects = subjectsData.length;
-    }
-
-    if (deadlinesData?.length > 0) {
-      // Merge with existing tasks (keep manually added ones)
-      const { value } = await Preferences.get({ key: `tasks_${userEmail}` });
-      const existing = value ? JSON.parse(value) : [];
-      const manual = existing.filter(t => !t.source);
-      const merged = [...manual, ...deadlinesData];
-      await Preferences.set({ key: `tasks_${userEmail}`, value: JSON.stringify(merged) });
-      results.tasks = deadlinesData.length;
-    }
-
-    console.log('Sync complete:', results);
-    return results;
+    await removeKey('lms_user');
+    clearBundleCache();
   }
 };

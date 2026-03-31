@@ -1,0 +1,91 @@
+{
+  "draw": 1,
+  "recordsTotal": 7,
+  "recordsFiltered": 7,
+  "data": [
+    {
+      "id": 25630,
+      "part_ids": "554812###554815",
+      "streams": "HIS202###HIS202-3",
+      "subject": "Новейшая история Узбекистана",
+      "subject_id": 3025,
+      "semester_id": 49,
+      "attendance": 2,
+      "teachers": "Maxkamova Nodira Raxmanovna###Abduraximova Shaxnoza Asatullayevna",
+      "failed": false,
+      "download_questions_url": false
+    },
+    {
+      "id": 25647,
+      "part_ids": "554747###554750",
+      "streams": "CAL207###CAL207-3",
+      "subject": "Исчисление 2",
+      "subject_id": 3307,
+      "semester_id": 49,
+      "attendance": 1,
+      "teachers": "Jurayeva Nodira Yunusovna###Alimov Xayriddin To‘xtamurod o‘g‘li",
+      "failed": false,
+      "download_questions_url": false
+    },
+    {
+      "id": 25731,
+      "part_ids": "554471###554474",
+      "streams": "EAC202###EAC202-3",
+      "subject": "Инженерная графика (4 кр)",
+      "subject_id": 3305,
+      "semester_id": 49,
+      "attendance": 2,
+      "teachers": "Dadaboyeva Dilnoza Irkinovna###Dadaboyeva Dilnoza Irkinovna",
+      "failed": false,
+      "download_questions_url": "https://lms.tuit.uz/student/download/written/questions/3305/ru"
+    },
+    {
+      "id": 25822,
+      "part_ids": "554376",
+      "streams": "AWR206",
+      "subject": "Академическое письмо",
+      "subject_id": 3026,
+      "semester_id": 49,
+      "attendance": 0,
+      "teachers": "Abdullaeva Simela Xristoforovna",
+      "failed": false,
+      "download_questions_url": "https://lms.tuit.uz/student/download/written/questions/3026/ru"
+    },
+    {
+      "id": 26054,
+      "part_ids": "555615###555618",
+      "streams": "PRG203###PRG203-3",
+      "subject": "Программирование 2-б (4 кредита)",
+      "subject_id": 3309,
+      "semester_id": 49,
+      "attendance": 5,
+      "teachers": "Xaydarova Marxamat Yunusovna###Alimov Xayriddin To‘xtamurod o‘g‘li",
+      "failed": false,
+      "download_questions_url": false
+    },
+    {
+      "id": 26145,
+      "part_ids": "556072###556075###556078",
+      "streams": "PHY207###PHY207-L3###PHY207-3",
+      "subject": "Физика 2 (4 kr)",
+      "subject_id": 3040,
+      "semester_id": 49,
+      "attendance": 0,
+      "teachers": "Imamov Erkin Zunnunovich###Absalyamova Ilmira Ildarovna###Absalyamova Ilmira Ildarovna",
+      "failed": false,
+      "download_questions_url": false
+    },
+    {
+      "id": 26603,
+      "part_ids": "556806",
+      "streams": "ENG239",
+      "subject": "Английский язык II",
+      "subject_id": 2371,
+      "semester_id": 49,
+      "attendance": 1,
+      "teachers": "Raxmanova Dilafruz Yuldashevna",
+      "failed": false,
+      "download_questions_url": false
+    }
+  ]
+}

@@ -1,258 +1,346 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Paperclip, Upload, Plus, Edit2, Trash2, X } from 'lucide-react';
-import { differenceInDays, differenceInHours, differenceInMinutes, parseISO, format } from 'date-fns';
-import { Preferences } from '@capacitor/preferences';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Clock, ExternalLink, RefreshCw, ChevronRight, BookOpenCheck } from 'lucide-react';
+import { lmsService } from '../services/lmsService';
+import { getJson } from '../services/storageService';
+import { useI18n } from '../i18n';
+
+const categoryTabs = ['all', 'homework', 'lab', 'coursework', 'midterm'];
+
+const categoryToCanonical = (label = '') => {
+  const normalized = String(label).toLowerCase();
+  if (normalized.includes('lab') || normalized.includes('лабо')) return 'lab';
+  if (normalized.includes('kurs') || normalized.includes('курс')) return 'coursework';
+  if (normalized.includes('oraliq') || normalized.includes('рубеж') || normalized.includes('контрол')) return 'midterm';
+  if (normalized.includes('uy') || normalized.includes('дом')) return 'homework';
+  return 'homework';
+};
+
+const formatDateTime = (iso, lang) => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '--';
+  const locale = lang === 'ru' ? 'ru-RU' : 'uz-UZ';
+  return `${date.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit'
+  })}`;
+};
+
+const countdownLabel = (iso, t) => {
+  const target = new Date(iso).getTime();
+  if (Number.isNaN(target)) return t('tasks.noTime');
+
+  const diff = target - Date.now();
+  if (diff <= 0) return t('tasks.expired');
+
+  const minutes = Math.floor(diff / (1000 * 60));
+  if (minutes < 60) return t('tasks.leftMinutes', { value: minutes });
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t('tasks.leftHours', { h: hours, m: minutes % 60 });
+
+  const days = Math.floor(hours / 24);
+  return t('tasks.leftDays', { d: days, h: hours % 24 });
+};
+
+const priorityColor = (priority = 'medium') => {
+  if (priority === 'high') return 'var(--danger)';
+  if (priority === 'low') return 'var(--success)';
+  return 'var(--warning)';
+};
+
+const normalizeSubjectFromTask = (task, t) => {
+  if (task?.subject) return String(task.subject).trim();
+
+  if (task?.description) {
+    const fromDescription = String(task.description).match(/Fan:\s*([^|]+)/i)?.[1]?.trim();
+    if (fromDescription) return fromDescription;
+  }
+
+  const text = String(task?.title || '').trim();
+  if (!text) return t('tasks.unknownSubject');
+  if (text.includes(':')) return text.split(':')[0].trim();
+  return text.split('-')[0].trim();
+};
+
+const canonicalToLabel = (canonical, t) => {
+  if (canonical === 'all') return t('tasks.categories.all');
+  if (canonical === 'lab') return t('tasks.categories.lab');
+  if (canonical === 'coursework') return t('tasks.categories.coursework');
+  if (canonical === 'midterm') return t('tasks.categories.midterm');
+  return t('tasks.categories.homework');
+};
 
 export default function Tasks({ user }) {
-  const [activeTab, setActiveTab] = useState('Barchasi');
-  
-  const categories = ['Barchasi', 'Uy vazifasi', 'Kurs ishi', 'Laboratoriya', 'Oraliq'];
-
+  const { t, lang } = useI18n();
   const [tasks, setTasks] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const [grouped, setGrouped] = useState([]);
+  const [activeSemester, setActiveSemester] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [subjectFilter, setSubjectFilter] = useState(t('tasks.categories.all'));
+  const [syncing, setSyncing] = useState(false);
+  const [openSubject, setOpenSubject] = useState('');
+
+  const allLabel = t('tasks.categories.all');
+
+  const loadData = async () => {
+    if (!user) return;
+
+    const [storedTasks, syncData] = await Promise.all([
+      getJson(`tasks_${user.email}`, []),
+      getJson(`lms_last_sync_${user.email}`, null)
+    ]);
+
+    const lmsTasks = (Array.isArray(storedTasks) ? storedTasks : []).filter((task) => task.source === 'lms');
+    const normalized = lmsTasks
+      .map((task) => ({
+        ...task,
+        subject: task.subject || normalizeSubjectFromTask(task, t)
+      }))
+      .sort((a, b) => new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime());
+
+    setTasks(normalized);
+    setActiveSemester(syncData?.activeSemester || '');
+
+    const bySubjectMap = new Map();
+    normalized.forEach((task) => {
+      const subject = task.subject || normalizeSubjectFromTask(task, t);
+      if (!bySubjectMap.has(subject)) bySubjectMap.set(subject, []);
+      bySubjectMap.get(subject).push(task);
+    });
+
+    const getUpcomingDeadline = (items) => {
+      const now = Date.now();
+      return items
+        .map((task) => new Date(task.deadline || 0).getTime())
+        .filter((time) => Number.isFinite(time) && time >= now)
+        .sort((a, b) => a - b)[0] ?? null;
+    };
+
+    const getLatestDeadline = (items) => {
+      return items
+        .map((task) => new Date(task.deadline || 0).getTime())
+        .filter((time) => Number.isFinite(time))
+        .sort((a, b) => b - a)[0] ?? 0;
+    };
+
+    const groupedSubjects = Array.from(bySubjectMap.entries())
+      .map(([subject, list]) => ({
+        subject,
+        tasks: list.sort((a, b) => new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime())
+      }))
+      .sort((a, b) => {
+        const aUpcoming = getUpcomingDeadline(a.tasks);
+        const bUpcoming = getUpcomingDeadline(b.tasks);
+
+        if (aUpcoming !== null && bUpcoming !== null) return aUpcoming - bUpcoming;
+        if (aUpcoming !== null) return -1;
+        if (bUpcoming !== null) return 1;
+
+        const aLatest = getLatestDeadline(a.tasks);
+        const bLatest = getLatestDeadline(b.tasks);
+        if (aLatest !== bLatest) return bLatest - aLatest;
+
+        return a.subject.localeCompare(b.subject);
+      });
+
+    setGrouped(groupedSubjects);
+
+    if (!openSubject && groupedSubjects.length) {
+      setOpenSubject(groupedSubjects[0].subject);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      if (user) {
-        const { value } = await Preferences.get({ key: `tasks_${user.email}` });
-        if (value) {
-          setTasks(JSON.parse(value));
-        } else {
-          setTasks([
-            { id: 1, title: 'Web Dasturlash loyihasi', category: 'Kurs ishi', deadline: new Date(Date.now() + 86400000 * 3).toISOString() },
-            { id: 2, title: 'Fizika 4-Lab', category: 'Laboratoriya', deadline: new Date(Date.now() + 10800000).toISOString() },
-            { id: 3, title: "Ma'lumotlar bazasi oraliq", category: 'Oraliq', deadline: new Date(Date.now() + 86400000 * 1).toISOString() }
-          ]);
-        }
-      }
-      setLoaded(true);
-    };
+    setSubjectFilter(allLabel);
+  }, [allLabel]);
+
+  useEffect(() => {
     loadData();
   }, [user]);
 
-  useEffect(() => {
-    if (loaded && user) {
-      Preferences.set({ key: `tasks_${user.email}`, value: JSON.stringify(tasks) });
+  const syncLms = async () => {
+    if (!user?.isLms || syncing) return;
+    setSyncing(true);
+    try {
+      await lmsService.syncAll(user.email);
+      await loadData();
+    } finally {
+      setSyncing(false);
     }
-  }, [tasks, user, loaded]);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  
-  const [formData, setFormData] = useState({
-    title: '',
-    category: 'Uy vazifasi',
-    deadlineDate: '',
-    deadlineTime: ''
-  });
-
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000); // update every minute
-    return () => clearInterval(timer);
-  }, []);
-
-  const getCountdown = (deadline) => {
-    const target = parseISO(deadline);
-    const days = differenceInDays(target, currentTime);
-    const hours = differenceInHours(target, currentTime) % 24;
-    const minutes = differenceInMinutes(target, currentTime) % 60;
-    
-    if (days > 0) return `${days} kun, ${hours} soat qoldi`;
-    if (hours > 0) return `${hours} soat, ${minutes} daqiqa qoldi`;
-    if (minutes > 0) return `${minutes} daqiqa qoldi!`;
-    return "Vaqti tugadi";
   };
 
-  const handleOpenModal = (t = null) => {
-    if (t) {
-      setEditingId(t.id);
-      const d = new Date(t.deadline);
-      setFormData({
-        title: t.title,
-        category: t.category,
-        deadlineDate: format(d, 'yyyy-MM-dd'),
-        deadlineTime: format(d, 'HH:mm')
-      });
-    } else {
-      setEditingId(null);
-      setFormData({ title: '', category: 'Uy vazifasi', deadlineDate: '', deadlineTime: '' });
-    }
-    setIsModalOpen(true);
-  };
+  const subjects = useMemo(() => {
+    const set = new Set();
+    tasks.forEach((task) => {
+      const subject = task.subject || normalizeSubjectFromTask(task, t);
+      if (subject) set.add(subject);
+    });
+    return [allLabel, ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [tasks, allLabel]);
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingId(null);
-  };
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const byCategory = activeCategory === 'all' || categoryToCanonical(task.category || '') === activeCategory;
+      const taskSubject = task.subject || normalizeSubjectFromTask(task, t);
+      const bySubject = subjectFilter === allLabel || taskSubject === subjectFilter;
+      return byCategory && bySubject;
+    });
+  }, [tasks, activeCategory, subjectFilter, allLabel, t]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!formData.title || !formData.deadlineDate || !formData.deadlineTime) return;
-
-    // Combine date and time
-    const [year, month, day] = formData.deadlineDate.split('-');
-    const [hour, min] = formData.deadlineTime.split(':');
-    const deadlineIso = new Date(year, month - 1, day, hour, min).toISOString();
-
-    const newTask = {
-      id: editingId || Date.now(),
-      title: formData.title,
-      category: formData.category,
-      deadline: deadlineIso
+  const stats = useMemo(() => {
+    const open = filteredTasks.filter((task) => !task.completed);
+    return {
+      total: open.length,
+      urgent: open.filter((task) => (task.priority || 'medium') === 'high').length
     };
-
-    if (editingId) {
-      setTasks(prev => prev.map(t => t.id === editingId ? newTask : t));
-    } else {
-      setTasks(prev => [...prev, newTask]);
-    }
-    handleCloseModal();
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm("Rostdan ham bu vazifani o'chirmoqchimisiz?")) {
-      setTasks(prev => prev.filter(t => t.id !== id));
-    }
-  };
-
-  const filteredTasks = activeTab === 'Barchasi' ? tasks : tasks.filter(t => t.category === activeTab);
+  }, [filteredTasks]);
 
   return (
     <div>
-      <h1 className="text-gradient">Vazifalar</h1>
-      <p className="text-secondary text-sm mb-4">Muddati yaqinlashayotgan ishlar tizimi</p>
-
-      {/* Tabs */}
-      <div className="flex-center mb-5 mt-2 hide-scrollbar" style={{ gap: '8px', overflowX: 'auto', paddingBottom: '10px', justifyContent: 'flex-start' }}>
-        {categories.map(cat => (
-          <button 
-            key={cat}
-            onClick={() => setActiveTab(cat)}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '20px',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              backgroundColor: activeTab === cat ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
-              color: activeTab === cat ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid ' + (activeTab === cat ? 'transparent' : 'var(--border-color)'),
-              transition: 'all 0.3s ease'
-             }}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="flex-between mb-2">
+        <h1 className="text-gradient">{t('tasks.title')}</h1>
+        <button
+          onClick={syncLms}
+          disabled={syncing}
+          className="glass-panel p-2 flex-center"
+          style={{ border: 'none', background: 'rgba(0,209,255,0.12)', color: 'var(--accent-primary)', cursor: 'pointer' }}
+          title={t('common.sync')}
+        >
+          <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+        </button>
       </div>
 
-      {/* Task List */}
-      <div className="flex-column gap-4">
-        {filteredTasks.map(task => {
-          const isUrgent = differenceInHours(parseISO(task.deadline), currentTime) < 24;
-          return (
-            <div key={task.id} className="glass-panel p-4" style={{ position: 'relative' }}>
-              <div className="flex-between mb-2">
-                <span className="text-xs font-semibold" style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px' }}>
-                  {task.category}
-                </span>
-                <span className="flex-center gap-1 text-xs" style={{ color: isUrgent ? 'var(--danger)' : 'var(--warning)', fontWeight: 600 }}>
-                  <Clock size={12} /> {getCountdown(task.deadline)}
-                </span>
-              </div>
-              
-              <div className="flex-between items-start mt-1 mb-3">
-                <h3 className="font-medium text-primary">{task.title}</h3>
-                <div className="flex-center gap-2">
-                  <button onClick={() => handleOpenModal(task)} className="transition" style={{background:'rgba(255,255,255,0.05)', border:'none', color:'var(--text-secondary)', cursor:'pointer', padding: '6px', borderRadius: '6px'}}><Edit2 size={16} /></button>
-                  <button onClick={() => handleDelete(task.id)} className="transition" style={{background:'rgba(239,68,68,0.1)', border:'none', color:'var(--danger)', cursor:'pointer', padding: '6px', borderRadius: '6px'}}><Trash2 size={16} /></button>
-                </div>
-              </div>
+      <p className="text-secondary text-sm mb-1">{t('tasks.subtitle')}</p>
+      <p className="text-xs text-secondary mb-3">{t('tasks.activeSemester')}: {activeSemester || t('common.unknown')}</p>
 
-              <div className="flex-between" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                <button className="flex-center gap-2 text-xs text-secondary" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                  <Paperclip size={14} /> Fayl biriktirish
-                </button>
-                <button className="flex-center gap-1 text-xs text-white" style={{ background: 'var(--success)', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
-                  <Upload size={14} /> Topshirish
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        {filteredTasks.length === 0 && (
-          <p className="text-center text-secondary text-sm mt-5">Bu kategoriyada vazifalar yo'q 🎉</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '12px' }}>
+        <div className="glass-panel p-3" style={{ background: 'rgba(0,209,255,0.12)' }}>
+          <p className="text-xs text-secondary">{t('tasks.activeTasks')}</p>
+          <p className="font-semibold mt-1">{stats.total}</p>
+        </div>
+        <div className="glass-panel p-3" style={{ background: 'rgba(239,68,68,0.12)' }}>
+          <p className="text-xs text-secondary">{t('tasks.urgent')}</p>
+          <p className="font-semibold mt-1">{stats.urgent}</p>
+        </div>
+      </div>
+
+      <div className="glass-panel p-2 mb-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+          {categoryTabs.map((tabId) => (
+            <button
+              key={tabId}
+              onClick={() => setActiveCategory(tabId)}
+              style={{
+                border: `1px solid ${activeCategory === tabId ? 'rgba(0,209,255,0.45)' : 'var(--border-color)'}`,
+                background: activeCategory === tabId ? 'rgba(0,209,255,0.18)' : 'rgba(255,255,255,0.03)',
+                color: activeCategory === tabId ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                borderRadius: '16px',
+                padding: '6px 12px',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer'
+              }}
+            >
+              {canonicalToLabel(tabId, t)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-panel p-2 mb-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+          {subjects.map((subject) => (
+            <button
+              key={subject}
+              onClick={() => setSubjectFilter(subject)}
+              style={{
+                border: `1px solid ${subjectFilter === subject ? 'rgba(34,197,94,0.45)' : 'var(--border-color)'}`,
+                background: subjectFilter === subject ? 'rgba(34,197,94,0.16)' : 'rgba(255,255,255,0.03)',
+                color: subjectFilter === subject ? 'var(--success)' : 'var(--text-secondary)',
+                borderRadius: '16px',
+                padding: '6px 12px',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer'
+              }}
+            >
+              {subject}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-column gap-2">
+        {filteredTasks.length ? (
+          grouped
+            .filter((groupItem) => {
+              if (subjectFilter !== allLabel && groupItem.subject !== subjectFilter) return false;
+              const hasCategory = groupItem.tasks.some((task) => activeCategory === 'all' || categoryToCanonical(task.category || '') === activeCategory);
+              return hasCategory;
+            })
+            .map((groupItem) => {
+              const subjectTasks = groupItem.tasks.filter((task) => activeCategory === 'all' || categoryToCanonical(task.category || '') === activeCategory);
+              const isOpen = openSubject === groupItem.subject;
+
+              return (
+                <div key={groupItem.subject} className="glass-panel p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <button
+                    onClick={() => setOpenSubject((prev) => (prev === groupItem.subject ? '' : groupItem.subject))}
+                    className="w-full"
+                    style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <div className="flex-between" style={{ alignItems: 'center', gap: '8px' }}>
+                      <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
+                        <BookOpenCheck size={15} color="var(--accent-primary)" />
+                        <span className="font-semibold text-sm">{groupItem.subject}</span>
+                      </div>
+                      <div className="flex-center" style={{ gap: '6px' }}>
+                        <span className="text-xs text-secondary">{t('tasks.countTasks', { count: subjectTasks.length })}</span>
+                        <ChevronRight size={14} style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }} />
+                      </div>
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="flex-column gap-2 mt-3">
+                      {subjectTasks.map((task) => (
+                        <div key={task.id} className="glass-panel p-3" style={{ background: 'rgba(0,0,0,0.18)', borderLeft: `4px solid ${priorityColor(task.priority)}` }}>
+                          <div className="flex-between" style={{ alignItems: 'flex-start', gap: '8px' }}>
+                            <div>
+                              <p className="font-semibold text-sm">{task.title}</p>
+                              <p className="text-xs text-secondary mt-1">{canonicalToLabel(categoryToCanonical(task.category || ''), t)}</p>
+                            </div>
+                            <span className="text-xs" style={{ color: priorityColor(task.priority), fontWeight: 700 }}>
+                              {countdownLabel(task.deadline, t)}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-secondary mt-2 flex-center" style={{ justifyContent: 'flex-start', gap: '6px' }}>
+                            <Clock size={12} /> {t('tasks.deadline')}: {formatDateTime(task.deadline, lang)}
+                          </p>
+
+                          {!!task.link && (
+                            <a
+                              href={task.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs mt-2 flex-center"
+                              style={{ justifyContent: 'flex-start', gap: '6px', color: 'var(--info)', textDecoration: 'none' }}
+                            >
+                              <ExternalLink size={12} /> {t('tasks.openLms')}
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+        ) : (
+          <div className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <p className="text-center text-secondary text-sm">{t('tasks.noFiltered')}</p>
+          </div>
         )}
       </div>
-
-      <button 
-        className="btn-primary flex-center mt-5 w-full shadow-lg" 
-        style={{ 
-          position: 'fixed', bottom: '90px', right: '20px', 
-          width: '50px', height: '50px', borderRadius: '50%', padding: 0,
-          fontSize: '24px', zIndex: 100
-        }}
-        onClick={() => handleOpenModal()}
-      >
-        <Plus size={24} />
-      </button>
-
-      {/* Modern Modal for Adding/Editing Tasks */}
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000,
-          animation: 'fadeIn 0.2s ease-out'
-        }}>
-          <div className="glass-panel" style={{
-            width: '100%', maxWidth: '600px', background: 'var(--bg-main)',
-            borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-            padding: '24px', animation: 'slideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto'
-          }}>
-            <div className="flex-between mb-4">
-              <h2 className="text-lg">{editingId ? 'Vazifani Tahrirlash' : "Yangi Vazifa Qo'shish"}</h2>
-              <button onClick={handleCloseModal} style={{background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer'}}><X size={24} /></button>
-            </div>
-            
-            <form onSubmit={handleSave} className="flex-column gap-4">
-              <div>
-                <label className="text-xs text-secondary mb-1 block">Vazifa nomi</label>
-                <input required name="title" value={formData.title} onChange={handleChange} placeholder="Mashqni bajarish..." className="w-full p-2 rounded" style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-              </div>
-              
-              <div>
-                <label className="text-xs text-secondary mb-1 block">Kategoriya</label>
-                <select name="category" value={formData.category} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}}>
-                  {categories.filter(c => c !== 'Barchasi').map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex-between gap-3">
-                <div style={{flex: 1}}>
-                  <label className="text-xs text-secondary mb-1 block">Muddat (Sana)</label>
-                  <input required type="date" name="deadlineDate" value={formData.deadlineDate} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-                </div>
-                <div style={{flex: 1}}>
-                  <label className="text-xs text-secondary mb-1 block">Vaqt (Soat)</label>
-                  <input required type="time" name="deadlineTime" value={formData.deadlineTime} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-                </div>
-              </div>
-
-              <button type="submit" className="btn-primary mt-4 w-full" style={{width: '100%'}}>
-                {editingId ? 'Saqlash' : "Qo'shish"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

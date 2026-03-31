@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Preferences } from '@capacitor/preferences';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Timetable from './pages/Timetable';
@@ -8,19 +7,32 @@ import Tasks from './pages/Tasks';
 import Grades from './pages/Grades';
 import Library from './pages/Library';
 import AIChat from './pages/AIChat';
+import Profile from './pages/Profile';
+import Leaderboard from './pages/Leaderboard';
+import Teachers from './pages/Teachers';
 import Login from './pages/Login';
-import Register from './pages/Register';
+import { getJson, removeKey, setJson } from './services/storageService';
+import { lmsService } from './services/lmsService';
+import { I18nContext, detectLanguageFromProfile, translate } from './i18n';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState('uz');
 
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const { value } = await Preferences.get({ key: 'currentUser' });
-        if (value) {
-          setUser(JSON.parse(value));
+        const storedUser = await getJson('currentUser', null);
+        if (storedUser) {
+          setUser(storedUser);
+          const storedLang = await getJson(`lang_${storedUser.email}`, null);
+          if (storedLang === 'ru' || storedLang === 'uz') {
+            setLang(storedLang);
+          } else {
+            const profile = await getJson(`profile_${storedUser.email}`, null);
+            setLang(detectLanguageFromProfile(profile));
+          }
         }
       } catch (e) {
         console.error("Local storage read error", e);
@@ -32,43 +44,58 @@ function App() {
 
   const handleLogin = async (userData) => {
     setUser(userData);
-    await Preferences.set({ key: 'currentUser', value: JSON.stringify(userData) });
+    await setJson('currentUser', userData);
+
+    const profile = await getJson(`profile_${userData.email}`, null);
+    const detected = detectLanguageFromProfile(profile);
+    setLang(detected);
+    await setJson(`lang_${userData.email}`, detected);
   };
 
   const handleLogout = async () => {
+    await lmsService.logout();
+    if (user?.email) {
+      await removeKey(`lang_${user.email}`);
+    }
     setUser(null);
-    await Preferences.remove({ key: 'currentUser' });
+    await removeKey('currentUser');
+    await removeKey('lms_user');
+    setLang('uz');
   };
 
   if (loading) {
-    return <div className="flex-center" style={{ height: '100vh', background: 'var(--bg-main)', color: 'white' }}>Yuklanmoqda...</div>;
+    return <div className="flex-center" style={{ height: '100vh', background: 'var(--bg-main)', color: 'white' }}>{translate(lang, 'app.loading')}</div>;
   }
 
-  return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route 
-          path="/login" 
-          element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
-        />
-        <Route 
-          path="/register" 
-          element={!user ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
-        />
+  const t = (key, params) => translate(lang, key, params);
 
-        {/* Protected Routes directly inside Layout */}
-        <Route path="/" element={user ? <Layout /> : <Navigate to="/login" replace />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard user={user} onLogout={handleLogout} />} />
-          <Route path="timetable" element={<Timetable user={user} />} />
-          <Route path="tasks" element={<Tasks user={user} />} />
-          <Route path="grades" element={<Grades user={user} />} />
-          <Route path="library" element={<Library user={user} />} />
-          <Route path="ai-chat" element={<AIChat user={user} />} />
-        </Route>
-      </Routes>
-    </Router>
+  return (
+    <I18nContext.Provider value={{ lang, t }}>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route 
+            path="/login" 
+            element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
+          />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
+
+          {/* Protected Routes directly inside Layout */}
+          <Route path="/" element={user ? <Layout /> : <Navigate to="/login" replace />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard user={user} onLogout={handleLogout} />} />
+            <Route path="timetable" element={<Timetable user={user} />} />
+            <Route path="tasks" element={<Tasks user={user} />} />
+            <Route path="grades" element={<Grades user={user} />} />
+            <Route path="library" element={<Library user={user} />} />
+            <Route path="ai-chat" element={<AIChat user={user} />} />
+            <Route path="profile" element={<Profile user={user} />} />
+            <Route path="leaderboard" element={<Leaderboard user={user} />} />
+            <Route path="teachers" element={<Teachers user={user} />} />
+          </Route>
+        </Routes>
+      </Router>
+    </I18nContext.Provider>
   );
 }
 

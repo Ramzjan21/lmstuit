@@ -1,339 +1,264 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { differenceInCalendarWeeks } from 'date-fns';
-import { Preferences } from '@capacitor/preferences';
-import { MapPin, Phone, MessageCircle, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, RefreshCw } from 'lucide-react';
+import { RefreshCw, UserRound, MapPin } from 'lucide-react';
 import { lmsService } from '../services/lmsService';
+import { getJson } from '../services/storageService';
+import { useI18n } from '../i18n';
+
+const WEEK_DAYS = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+
+const parseTimeToMinutes = (value) => {
+  const [h, m] = String(value || '').split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return Number.POSITIVE_INFINITY;
+  return h * 60 + m;
+};
+
+const normalizeTime = (value = '') => {
+  const [h, m] = String(value).split(':');
+  if (h === undefined || m === undefined) return '';
+  const hh = String(Number(h)).padStart(2, '0');
+  const mm = String(Number(m)).padStart(2, '0');
+  if (Number.isNaN(Number(hh)) || Number.isNaN(Number(mm))) return '';
+  return `${hh}:${mm}`;
+};
+
+const buildTimeRange = (start, end) => {
+  if (!start && !end) return '';
+  if (!end) return start;
+  if (!start) return end;
+  return `${start} - ${end}`;
+};
+
+const normalizeLesson = (lesson, index, t) => {
+  const startRaw = lesson.startTime || String(lesson.time || '').split(' - ')[0] || '';
+  const endRaw = lesson.endTime || String(lesson.time || '').split(' - ')[1] || '';
+  const startTime = normalizeTime(startRaw);
+  const endTime = normalizeTime(endRaw);
+  const day = WEEK_DAYS.includes(lesson.day) ? lesson.day : 'Dushanba';
+
+  return {
+    id: lesson.id || `lesson_${Date.now()}_${index}`,
+    name: (lesson.name || '').trim() || t('timetable.unknownSubject'),
+    type: lesson.type || "Ma'ruza",
+    day,
+    startTime,
+    endTime,
+    time: buildTimeRange(startTime, endTime),
+    location: (lesson.location || '').trim() || t('timetable.roomMissing'),
+    teacher: {
+      name: lesson.teacher?.name || t('timetable.teacher')
+    }
+  };
+};
+
+const sortLessons = (items = [], t) => {
+  const orderMap = new Map(WEEK_DAYS.map((day, index) => [day, index]));
+  return [...items]
+    .map((lesson, index) => normalizeLesson(lesson, index, t))
+    .sort((a, b) => {
+      const dayA = orderMap.get(a.day) ?? 99;
+      const dayB = orderMap.get(b.day) ?? 99;
+      if (dayA !== dayB) return dayA - dayB;
+      const tA = parseTimeToMinutes(a.startTime);
+      const tB = parseTimeToMinutes(b.startTime);
+      if (tA !== tB) return tA - tB;
+      return a.name.localeCompare(b.name);
+    });
+};
+
+const typeStyle = (type = '') => {
+  const key = String(type).toLowerCase();
+  if (key.includes('lab')) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' };
+  if (key.includes('amaliy')) return { color: '#22c55e', bg: 'rgba(34,197,94,0.12)' };
+  if (key.includes('seminar')) return { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' };
+  return { color: '#00d1ff', bg: 'rgba(0,209,255,0.12)' };
+};
 
 export default function Timetable({ user }) {
-  const [isEvenWeek, setIsEvenWeek] = useState(true);
-  const [expandedCard, setExpandedCard] = useState(null);
+  const { t, lang } = useI18n();
+  const [lessons, setLessons] = useState([]);
+  const [activeSemester, setActiveSemester] = useState('');
   const [syncing, setSyncing] = useState(false);
-  
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    type: "Ma'ruza",
-    time: '',
-    location: '',
-    teacherName: '',
-    teacherPhone: '',
-    teacherTelegram: ''
-  });
-  
-  const [schedule, setSchedule] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const [isEvenWeek, setIsEvenWeek] = useState(true);
+  const [activeDay, setActiveDay] = useState('Dushanba');
 
-  const syncLms = async () => {
-    if (!user?.isLms) return;
-    setSyncing(true);
-    const data = await lmsService.syncSchedule();
-    if (data) {
-      // Flatten the timetable object into the array format used by the component
-      const flattened = [];
-      Object.entries(data).forEach(([day, lessons]) => {
-        lessons.forEach(l => {
-          flattened.push({
-            id: Math.random().toString(36).substr(2, 9),
-            name: l.subject,
-            type: l.type,
-            time: l.time,
-            location: l.room,
-            day: day, // Store day for filtering if needed
-            geo: "https://maps.google.com/?q=TUIT,Tashkent",
-            teacher: { name: l.teacher, phone: '', telegram: '' }
-          });
-        });
-      });
-      setSchedule(flattened);
+  useEffect(() => {
+    const semesterStart = new Date('2026-02-09');
+    const current = new Date();
+    const diff = differenceInCalendarWeeks(current, semesterStart, { weekStartsOn: 1 });
+    setIsEvenWeek(diff % 2 === 0);
+  }, []);
+
+  useEffect(() => {
+    const today = new Date();
+    const dayMap = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+    const todayName = dayMap[today.getDay()] || 'Dushanba';
+    if (WEEK_DAYS.includes(todayName)) {
+      setActiveDay(todayName);
+    } else {
+      setActiveDay('Dushanba');
     }
-    setSyncing(false);
+  }, []);
+
+  const loadData = async () => {
+    if (!user) return;
+
+    const [storedLessons, syncInfo] = await Promise.all([
+      getJson(`timetable_${user.email}`, []),
+      getJson(`lms_last_sync_${user.email}`, null)
+    ]);
+
+    setLessons(sortLessons(Array.isArray(storedLessons) ? storedLessons : [], t));
+    setActiveSemester(syncInfo?.activeSemester || '');
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      if (user) {
-        const { value } = await Preferences.get({ key: `timetable_${user.email}` });
-        if (value) {
-          setSchedule(JSON.parse(value));
-        } else if (user.isLms) {
-          await syncLms();
-        } else {
-          setSchedule([
-            {
-              id: 1,
-              name: "Ma'lumotlar bazasi",
-              type: "Ma'ruza",
-              time: "08:30 - 09:50",
-              location: "Bino: Asosiy, 2-qavat, 215-xona",
-              geo: "https://maps.google.com/?q=TUIT,Tashkent",
-              teacher: { name: "Prof. Aliyev D.", phone: "+998 90 123 45 67", telegram: "https://t.me/aliyev_db" }
-            },
-            {
-              id: 2,
-              name: "Web Dasturlash",
-              type: "Amaliyot",
-              time: "10:00 - 11:20",
-              location: "Bino: B, 3-qavat, 301-A",
-              geo: "https://maps.google.com/?q=TUIT,Tashkent",
-              teacher: { name: "O'qit. Karimov S.", phone: "+998 90 987 65 43", telegram: "https://t.me/karimov_web" }
-            }
-          ]);
-        }
-      }
-      setLoaded(true);
-    };
     loadData();
   }, [user]);
 
-  useEffect(() => {
-    if (loaded && user) {
-      Preferences.set({ key: `timetable_${user.email}`, value: JSON.stringify(schedule) });
+  const syncLms = async () => {
+    if (!user?.isLms || syncing) return;
+    setSyncing(true);
+    try {
+      await lmsService.syncAll(user.email);
+      await loadData();
+    } finally {
+      setSyncing(false);
     }
-  }, [schedule, user, loaded]);
-
-  useEffect(() => {
-    const semesterStart = new Date('2026-02-09'); 
-    const current = new Date();
-    const weeksDiff = differenceInCalendarWeeks(current, semesterStart, { weekStartsOn: 1 });
-    setIsEvenWeek(weeksDiff % 2 === 0);
-  }, []);
-
-  const handleOpenModal = (cls = null) => {
-    if (cls) {
-      setEditingId(cls.id);
-      setFormData({
-        name: cls.name,
-        type: cls.type,
-        time: cls.time,
-        location: cls.location,
-        teacherName: cls.teacher.name,
-        teacherPhone: cls.teacher.phone,
-        teacherTelegram: cls.teacher.telegram || ''
-      });
-    } else {
-      setEditingId(null);
-      setFormData({ name: '', type: "Ma'ruza", time: '', location: '', teacherName: '', teacherPhone: '', teacherTelegram: '' });
-    }
-    setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingId(null);
-  };
+  const lessonsByDay = useMemo(() => {
+    const grouped = new Map(WEEK_DAYS.map((day) => [day, []]));
+    lessons.forEach((lesson) => {
+      const day = WEEK_DAYS.includes(lesson.day) ? lesson.day : 'Dushanba';
+      grouped.get(day).push(lesson);
+    });
+    WEEK_DAYS.forEach((day) => {
+      grouped.set(day, grouped.get(day).sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)));
+    });
+    return grouped;
+  }, [lessons]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const visibleLessons = lessonsByDay.get(activeDay) || [];
+  const totalLessons = lessons.length;
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    const newClass = {
-      id: editingId || Date.now(),
-      name: formData.name,
-      type: formData.type,
-      time: formData.time,
-      location: formData.location,
-      geo: "https://maps.google.com/?q=TUIT,Tashkent", // Default for now
-      teacher: {
-        name: formData.teacherName,
-        phone: formData.teacherPhone,
-        telegram: formData.teacherTelegram
-      }
+  const dayLabel = (day) => {
+    if (lang !== 'ru') return day;
+    const map = {
+      Dushanba: 'Понедельник',
+      Seshanba: 'Вторник',
+      Chorshanba: 'Среда',
+      Payshanba: 'Четверг',
+      Juma: 'Пятница',
+      Shanba: 'Суббота'
     };
-
-    if (editingId) {
-      setSchedule(prev => prev.map(c => c.id === editingId ? newClass : c));
-    } else {
-      setSchedule(prev => [...prev, newClass]);
-    }
-    handleCloseModal();
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm("Rostdan ham bu darsni o'chirmoqchimisiz?")) {
-      setSchedule(prev => prev.filter(c => c.id !== id));
-    }
+    return map[day] || day;
   };
 
   return (
     <div>
-      <div className="flex-between mb-4">
-        <h1 className="text-gradient">Jadval</h1>
-        <div className="flex gap-2">
-          {user?.isLms && (
-            <button 
-              onClick={syncLms} 
-              disabled={syncing}
-              className="glass-panel p-2 flex-center" 
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer', border: 'none' }}
-            >
-              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-            </button>
-          )}
-          <div className="glass-panel text-sm font-semibold" style={{ padding: '6px 14px', borderRadius: '20px', background: isEvenWeek ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: isEvenWeek ? 'var(--success)' : 'var(--accent-primary)' }}>
-            {isEvenWeek ? 'Juft Hafta' : 'Toq Hafta'}
+      <div className="flex-between mb-3">
+        <h1 className="text-gradient">{t('timetable.title')}</h1>
+        <div className="flex-center gap-2">
+          <button
+            onClick={syncLms}
+            disabled={syncing}
+            className="glass-panel p-2 flex-center"
+            style={{ border: 'none', background: 'rgba(0,209,255,0.12)', color: 'var(--accent-primary)', cursor: 'pointer' }}
+            title={t('common.sync')}
+          >
+            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+          </button>
+
+          <span
+            className="glass-panel text-xs font-semibold"
+            style={{
+              padding: '7px 12px',
+              borderRadius: '20px',
+              background: isEvenWeek ? 'rgba(34,197,94,0.13)' : 'rgba(0,209,255,0.13)',
+              color: isEvenWeek ? 'var(--success)' : 'var(--accent-primary)'
+            }}
+          >
+            {isEvenWeek ? t('timetable.evenWeek') : t('timetable.oddWeek')}
+          </span>
+        </div>
+      </div>
+
+      <div className="glass-panel p-3 mb-3" style={{ background: 'rgba(0,209,255,0.06)', borderColor: 'rgba(0,209,255,0.22)' }}>
+        <div className="flex-between" style={{ alignItems: 'flex-start', gap: '8px' }}>
+          <div>
+            <p className="text-xs text-secondary">{t('timetable.activeSemester')}</p>
+            <p className="font-semibold mt-1">{activeSemester || t('common.unknown')}</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p className="text-xs text-secondary">{t('timetable.weeklyLessons')}</p>
+            <p className="font-semibold mt-1">{totalLessons}</p>
           </div>
         </div>
       </div>
-      
-      <p className="text-secondary text-sm mb-4">Avtomatlashtirilgan o'zgaruvchan jadval tizimi</p>
-      
-      <div className="flex-column gap-3">
-        {schedule.length === 0 ? (
-          <p className="text-center text-secondary mt-5">Hozircha darslar yo'q</p>
-        ) : (
-          schedule.map(cls => (
-            <div key={cls.id} className="glass-panel p-4" style={{ position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: cls.type === "Ma'ruza" ? 'var(--accent-secondary)' : 'var(--info)'}}></div>
 
-            
-            <div className="flex-between mb-2">
-              <p className="font-semibold text-lg" style={{ paddingRight: '12px' }}>{cls.name}</p>
-              <span className="text-xs font-medium" style={{ 
-                background: cls.type === "Ma'ruza" ? 'rgba(236, 72, 153, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
-                color: cls.type === "Ma'ruza" ? 'var(--accent-secondary)' : 'var(--info)', 
-                padding: '4px 8px', borderRadius: '8px', whiteSpace: 'nowrap'
-              }}>
-                {cls.type}
-              </span>
-            </div>
-
-            <div className="flex-between text-sm text-secondary mt-3">
-              <div className="flex-center gap-2">
-                <span className="font-medium text-primary">{cls.time}</span>
-              </div>
-            </div>
-
-            <div className="mt-3 text-sm flex-between align-start" style={{ alignItems: 'flex-start' }}>
-              <div className="flex-center gap-2 text-tertiary" style={{justifyContent: 'flex-start', flexWrap: 'wrap', flex: 1, paddingRight: '10px'}}>
-                <MapPin size={14} style={{flexShrink: 0}} />
-                <span style={{lineHeight: '1.4'}}>{cls.location}</span>
-                <a href={cls.geo} target="_blank" rel="noreferrer" className="text-accent-primary" style={{textDecoration: 'none', color: 'var(--accent-primary)', fontSize: '12px', flexShrink: 0}}>Xarita 📍</a>
-              </div>
-              <div className="flex-center gap-3">
-                <button onClick={() => handleOpenModal(cls)} style={{background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer', padding: '4px'}}><Edit2 size={16} /></button>
-                <button onClick={() => handleDelete(cls.id)} style={{background:'none', border:'none', color:'var(--danger)', cursor:'pointer', padding: '4px'}}><Trash2 size={16} /></button>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-              <button 
-                className="flex-between w-full text-sm text-secondary" 
-                style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer', outline: 'none' }}
-                onClick={() => setExpandedCard(expandedCard === cls.id ? null : cls.id)}
+      <div className="glass-panel p-2 mb-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+          {WEEK_DAYS.map((day) => {
+            const count = (lessonsByDay.get(day) || []).length;
+            const isActive = day === activeDay;
+            return (
+              <button
+                key={day}
+                onClick={() => setActiveDay(day)}
+                style={{
+                  border: `1px solid ${isActive ? 'rgba(0,209,255,0.45)' : 'var(--border-color)'}`,
+                  background: isActive ? 'rgba(0,209,255,0.18)' : 'rgba(255,255,255,0.03)',
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  borderRadius: '12px',
+                  padding: '8px 10px',
+                  minWidth: '92px',
+                  textAlign: 'left',
+                  cursor: 'pointer'
+                }}
               >
-                <span>O'qituvchi ma'lumotlari</span>
-                {expandedCard === cls.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                <p className="text-xs font-semibold">{dayLabel(day).slice(0, 3)}</p>
+                <p className="text-xs">{t('timetable.lessonsCount', { count })}</p>
               </button>
+            );
+          })}
+        </div>
+      </div>
 
-              {expandedCard === cls.id && (
-                <div className="mt-3 p-3 rounded" style={{ background: 'rgba(0,0,0,0.2)', animation: 'fadeIn 0.2s ease-out' }}>
-                  <p className="font-medium">{cls.teacher.name}</p>
-                  <div className="flex-column gap-2 mt-2">
-                    <a href={`tel:${cls.teacher.phone}`} className="flex-center gap-2 text-sm text-secondary" style={{justifyContent: 'flex-start', textDecoration: 'none'}}>
-                      <Phone size={14} color="var(--success)" /> {cls.teacher.phone}
-                    </a>
-                    <a href={cls.teacher.telegram} target="_blank" rel="noreferrer" className="flex-center gap-2 text-sm text-secondary" style={{justifyContent: 'flex-start', textDecoration: 'none'}}>
-                      <MessageCircle size={14} color="var(--info)" /> Telegram orqali yozish
-                    </a>
+      <div className="flex-between mb-2">
+        <h2 className="text-lg">{dayLabel(activeDay)}</h2>
+        <span className="text-xs text-secondary">{t('timetable.lessonsCount', { count: visibleLessons.length })}</span>
+      </div>
+
+      <div className="flex-column gap-2">
+        {visibleLessons.length ? (
+          visibleLessons.map((lesson) => {
+            const style = typeStyle(lesson.type);
+            return (
+              <div key={lesson.id} className="glass-panel p-3" style={{ background: style.bg, borderLeft: `3px solid ${style.color}` }}>
+                <div className="flex-between" style={{ alignItems: 'flex-start', gap: '8px' }}>
+                  <div>
+                    <p className="font-semibold text-sm">{lesson.name}</p>
+                    <p className="text-xs text-secondary mt-1">{t(`timetable.types.${lesson.type.toLowerCase()}`)}</p>
                   </div>
+                  <span className="text-xs" style={{ color: style.color, fontWeight: 700 }}>{lesson.time}</span>
                 </div>
-              )}
-            </div>
 
+                <p className="text-xs text-secondary mt-2 flex-center" style={{ justifyContent: 'flex-start', gap: '6px' }}>
+                  <MapPin size={12} /> {lesson.location || t('timetable.roomMissing')}
+                </p>
+                <p className="text-xs text-secondary mt-1 flex-center" style={{ justifyContent: 'flex-start', gap: '6px' }}>
+                  <UserRound size={12} /> {lesson.teacher?.name || t('timetable.teacher')}
+                </p>
+              </div>
+            );
+          })
+        ) : (
+          <div className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <p className="text-sm text-secondary text-center">{t('timetable.noDayLessons')}</p>
           </div>
-          ))
         )}
       </div>
-
-      <button 
-        className="btn-primary flex-center mt-5 w-full shadow-lg" 
-        style={{ 
-          position: 'fixed', bottom: '90px', right: '20px', 
-          width: '50px', height: '50px', borderRadius: '50%', padding: 0,
-          fontSize: '24px', zIndex: 100
-        }}
-        onClick={() => handleOpenModal()}
-      >
-        <Plus size={24} />
-      </button>
-
-      {/* Modern Modal for Adding/Editing Classes */}
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000,
-          animation: 'fadeIn 0.2s ease-out'
-        }}>
-          <div className="glass-panel" style={{
-            width: '100%', maxWidth: '600px', background: 'var(--bg-main)',
-            borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-            padding: '24px', animation: 'slideUp 0.3s ease-out', maxHeight: '85vh', overflowY: 'auto'
-          }}>
-            <div className="flex-between mb-4">
-              <h2 className="text-lg">{editingId ? 'Darsni Tahrirlash' : "Yangi Dars Qo'shish"}</h2>
-              <button onClick={handleCloseModal} style={{background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer'}}><X size={24} /></button>
-            </div>
-            
-            <form onSubmit={handleSave} className="flex-column gap-3">
-              <div>
-                <label className="text-xs text-secondary mb-1 block">Fan nomi</label>
-                <input required name="name" value={formData.name} onChange={handleChange} className="w-full p-2 rounded" style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-              </div>
-              
-              <div className="flex-between gap-3">
-                <div style={{flex: 1}}>
-                  <label className="text-xs text-secondary mb-1 block">Turi</label>
-                  <select name="type" value={formData.type} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}}>
-                    <option value="Ma'ruza">Ma'ruza</option>
-                    <option value="Amaliyot">Amaliyot</option>
-                    <option value="Laboratoriya">Laboratoriya</option>
-                  </select>
-                </div>
-                <div style={{flex: 1}}>
-                  <label className="text-xs text-secondary mb-1 block">Vaqti (09:00 - 10:20)</label>
-                  <input required name="time" value={formData.time} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-secondary mb-1 block">Xona/Bino</label>
-                <input required name="location" value={formData.location} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-              </div>
-
-              <div style={{borderTop: '1px solid var(--border-color)', margin: '10px 0'}}></div>
-              <h3 className="text-sm font-medium mb-1">O'qituvchi ma'lumotlari</h3>
-              
-              <div>
-                <label className="text-xs text-secondary mb-1 block">F.I.SH</label>
-                <input required name="teacherName" value={formData.teacherName} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-              </div>
-              
-              <div className="flex-between gap-3">
-                <div style={{flex: 1}}>
-                  <label className="text-xs text-secondary mb-1 block">Telefon</label>
-                  <input name="teacherPhone" value={formData.teacherPhone} onChange={handleChange} style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-                </div>
-                <div style={{flex: 1}}>
-                  <label className="text-xs text-secondary mb-1 block">Telegram Link</label>
-                  <input name="teacherTelegram" value={formData.teacherTelegram} onChange={handleChange} placeholder="https://t.me/..." style={{background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white', width: '100%', borderRadius: '8px', padding: '10px'}} />
-                </div>
-              </div>
-
-              <button type="submit" className="btn-primary mt-4 w-full" style={{width: '100%'}}>
-                {editingId ? 'Saqlash' : "Qo'shish"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

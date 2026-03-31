@@ -1,12 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader, Sparkles, MessageSquare } from 'lucide-react';
+import { Send, Bot, User, Loader, Sparkles } from 'lucide-react';
+import { aiService } from '../services/aiService';
+import { useI18n } from '../i18n';
 
 export default function AIChat({ user }) {
+  const { t, lang } = useI18n();
   const [messages, setMessages] = useState([
     {
       id: 1,
       role: 'assistant',
-      content: `Salom ${user?.name || 'Talaba'}! Men sizning shaxsiy AI yordamchingizman. Darslar, vazifalar, baholar va o'quv jarayoni bo'yicha savollaringizga javob berishga tayyorman. 🎓`,
+      content:
+        lang === 'ru'
+          ? `Здравствуйте, ${user?.name || 'Студент'}! Я ваш персональный AI-помощник. Готов помочь с расписанием, заданиями, оценками и учебным процессом. 🎓`
+          : `Salom ${user?.name || 'Talaba'}! Men sizning shaxsiy AI yordamchingizman. Darslar, vazifalar, baholar va o'quv jarayoni bo'yicha savollaringizga javob berishga tayyorman. 🎓`,
       timestamp: new Date()
     }
   ]);
@@ -22,13 +28,24 @@ export default function AIChat({ user }) {
     scrollToBottom();
   }, [messages]);
 
+  const buildConversation = (nextUserText) => {
+    const recentMessages = messages
+      .filter((msg) => msg.role === 'assistant' || msg.role === 'user')
+      .slice(-10)
+      .map((msg) => ({ role: msg.role, content: msg.content }));
+
+    return [...recentMessages, { role: 'user', content: nextUserText }];
+  };
+
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+
+    const userText = input.trim();
 
     const userMessage = {
       id: Date.now(),
       role: 'user',
-      content: input.trim(),
+      content: userText,
       timestamp: new Date()
     };
 
@@ -36,47 +53,70 @@ export default function AIChat({ user }) {
     setInput('');
     setLoading(true);
 
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(userMessage.content);
-      setMessages(prev => [...prev, {
+    const conversation = buildConversation(userText);
+    const aiResult = await aiService.getReply({
+      conversation,
+      userName: user?.name
+    });
+
+    const assistantText = aiResult.success
+      ? aiResult.message
+      : `${aiResult.error}\n\n${generateFallbackResponse(userText)}`;
+
+    setMessages(prev => [
+      ...prev,
+      {
         id: Date.now() + 1,
         role: 'assistant',
-        content: aiResponse,
+        content: assistantText,
         timestamp: new Date()
-      }]);
-      setLoading(false);
-    }, 1000);
+      }
+    ]);
+    setLoading(false);
   };
 
-  const generateAIResponse = (question) => {
+  const generateFallbackResponse = (question) => {
     const lowerQ = question.toLowerCase();
     
     if (lowerQ.includes('dars') || lowerQ.includes('jadval')) {
-      return "Sizning dars jadvalingizni ko'rish uchun 'Jadval' bo'limiga o'ting. U yerda barcha darslaringiz, vaqtlari va xonalar haqida ma'lumot bor. Qaysi kun yoki dars haqida batafsil ma'lumot kerak?";
+      return lang === 'ru'
+        ? "Чтобы увидеть расписание, откройте раздел 'Расписание'. Там есть пары, время и аудитории. Нужен конкретный день или предмет?"
+        : "Sizning dars jadvalingizni ko'rish uchun 'Jadval' bo'limiga o'ting. U yerda barcha darslaringiz, vaqtlari va xonalar haqida ma'lumot bor. Qaysi kun yoki dars haqida batafsil ma'lumot kerak?";
     }
     
     if (lowerQ.includes('vazifa') || lowerQ.includes('topshiriq')) {
-      return "Vazifalaringizni 'Vazifalar' bo'limida ko'rishingiz mumkin. U yerda barcha topshiriqlar, muddatlar va prioritetlar ko'rsatilgan. Yangi vazifa qo'shish yoki mavjudlarini tahrirlash ham mumkin.";
+      return lang === 'ru'
+        ? "Ваши задания находятся в разделе 'Задания'. Там указаны сроки и приоритеты."
+        : "Vazifalaringizni 'Vazifalar' bo'limida ko'rishingiz mumkin. U yerda barcha topshiriqlar, muddatlar va prioritetlar ko'rsatilgan.";
     }
     
     if (lowerQ.includes('baho') || lowerQ.includes('ball')) {
-      return "Baholaringizni 'Baholar' sahifasida ko'rishingiz mumkin. U yerda har bir fan bo'yicha ballaringiz, GPA va NB (qoldirgan darslar) haqida ma'lumot bor. LMS bilan sinxronlash orqali eng so'nggi ma'lumotlarni olishingiz mumkin.";
+      return lang === 'ru'
+        ? "Оценки смотрите в разделе 'Посещаемость'. Там есть баллы, GPA и NB."
+        : "Baholaringizni 'Baholar' sahifasida ko'rishingiz mumkin. U yerda har bir fan bo'yicha ballaringiz, GPA va NB (qoldirgan darslar) haqida ma'lumot bor.";
     }
     
     if (lowerQ.includes('lms') || lowerQ.includes('sinxron')) {
-      return "LMS bilan sinxronlash uchun Login sahifasida 'LMS (TUIT) Kirish' tugmasini bosing va HEMIS ID hamda parolingizni kiriting. Tizim avtomatik ravishda darslar, baholar va vazifalarni yuklab oladi.";
+      return lang === 'ru'
+        ? "Для синхронизации LMS войдите через HEMIS ID и пароль. Данные обновятся автоматически."
+        : "LMS bilan sinxronlash uchun Login sahifasida HEMIS ID hamda parolingizni kiriting. Tizim avtomatik ravishda darslar, baholar va vazifalarni yuklab oladi.";
     }
     
     if (lowerQ.includes('kutubxona') || lowerQ.includes('material')) {
-      return "Kutubxona bo'limida o'quv materiallari va ovozli qaydlaringizni saqlashingiz mumkin. Fayllarni yuklash, ovozli qayd yaratish va ularni boshqarish imkoniyatlari mavjud.";
+      return lang === 'ru'
+        ? "В разделе 'Библиотека' можно хранить учебные материалы и голосовые заметки."
+        : "Kutubxona bo'limida o'quv materiallari va ovozli qaydlaringizni saqlashingiz mumkin.";
     }
     
     if (lowerQ.includes('yordam') || lowerQ.includes('qanday')) {
-      return "Men sizga quyidagi mavzularda yordam bera olaman:\n\n📅 Dars jadvali va darslar haqida\n📝 Vazifalar va topshiriqlar\n📊 Baholar va akademik ko'rsatkichlar\n🔄 LMS integratsiyasi\n📚 Kutubxona va materiallar\n\nQaysi mavzu bo'yicha savol berishni xohlaysiz?";
+      return lang === 'ru'
+        ? "Я могу помочь по темам:\n\n📅 Расписание\n📝 Задания\n📊 Оценки\n🔄 LMS синхронизация\n📚 Библиотека\n\nПо какой теме вопрос?"
+        : "Men sizga quyidagi mavzularda yordam bera olaman:\n\n📅 Dars jadvali va darslar haqida\n📝 Vazifalar va topshiriqlar\n📊 Baholar va akademik ko'rsatkichlar\n🔄 LMS integratsiyasi\n📚 Kutubxona va materiallar\n\nQaysi mavzu bo'yicha savol berishni xohlaysiz?";
     }
     
-    return "Savolingizni tushundim. Ushbu funksiya hozircha ishlab chiqilmoqda. Darslar, vazifalar, baholar yoki LMS integratsiyasi haqida aniqroq savol bering, men yordam berishga harakat qilaman! 😊";
+    return lang === 'ru'
+      ? "Понял ваш вопрос. Уточните, пожалуйста, тему: расписание, задания, оценки или LMS синхронизация. 😊"
+      : "Savolingizni tushundim. Darslar, vazifalar, baholar yoki LMS integratsiyasi haqida aniqroq savol bering, men yordam berishga harakat qilaman! 😊";
   };
 
   const formatTime = (date) => {
@@ -92,8 +132,8 @@ export default function AIChat({ user }) {
             <Sparkles size={24} color="white" />
           </div>
           <div>
-            <h1 className="text-gradient" style={{ fontSize: '22px', marginBottom: '2px' }}>AI Yordamchi</h1>
-            <p className="text-secondary text-xs">O'quv jarayoni bo'yicha savollaringizga javob beraman</p>
+            <h1 className="text-gradient" style={{ fontSize: '22px', marginBottom: '2px' }}>{t('ai.title')}</h1>
+            <p className="text-secondary text-xs">{t('ai.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -156,7 +196,7 @@ export default function AIChat({ user }) {
             <div className="glass-panel p-3" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
               <div className="flex-center gap-2">
                 <Loader size={16} className="animate-spin" color="var(--accent-primary)" />
-                <span className="text-sm text-secondary">Javob tayyorlanmoqda...</span>
+                <span className="text-sm text-secondary">{t('ai.loading')}</span>
               </div>
             </div>
           </div>
@@ -173,7 +213,7 @@ export default function AIChat({ user }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Savolingizni yozing..."
+            placeholder={t('ai.inputPlaceholder')}
             className="flex-1 rounded"
             style={{
               background: 'rgba(0,0,0,0.2)',

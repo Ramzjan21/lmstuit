@@ -1,140 +1,168 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, LogIn } from 'lucide-react';
-import { Preferences } from '@capacitor/preferences';
+import { useNavigate } from 'react-router-dom';
+import { KeyRound, Lock, LogIn, ShieldCheck, TerminalSquare } from 'lucide-react';
 import { lmsService } from '../services/lmsService';
+import { useI18n } from '../i18n';
+
+const getTelegramUser = () => {
+  if (typeof window === 'undefined') return null;
+  return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
+};
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
-  const [isLmsMode, setIsLmsMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
+  const tgUser = getTelegramUser();
+  const { t } = useI18n();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (isLmsMode) {
-        setLoading(true);
-        setLoadingText('LMS ga ulanmoqda...');
-        const res = await lmsService.login(email, password);
-        if (res.success) {
-            const userEmail = `lms_${email}`;
-            setLoadingText('Ma\'lumotlar yuklanmoqda...');
-            await lmsService.syncAll(userEmail);
-            const userData = { name: res.name || email, email: userEmail, isLms: true, lmsLogin: email };
-            onLogin(userData);
-            navigate('/dashboard');
-        } else {
-            setLoading(false);
-            alert(res.error);
-        }
-        return;
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!login || !password || loading) return;
+
+    setLoading(true);
+    setLoadingText(t('login.connecting'));
+
+    const auth = await lmsService.login(login, password);
+    if (!auth.success) {
+      setLoading(false);
+      alert(auth.error || t('login.errorGeneric'));
+      return;
     }
 
-    if (email && password) {
-      const { value } = await Preferences.get({ key: 'users' });
-      const users = value ? JSON.parse(value) : [];
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        onLogin({ name: user.name, email: user.email });
-        navigate('/dashboard');
-      } else {
-        alert("Elektron pochta yoki parol noto'g'ri!");
-      }
-    }
+    const userEmail = `lms_${login}`;
+    setLoadingText(t('login.syncing'));
+    await lmsService.syncAll(userEmail);
+
+    const userData = {
+      name: auth.name || tgUser?.first_name || login,
+      email: userEmail,
+      isLms: true,
+      lmsLogin: login,
+      telegramId: tgUser?.id || null,
+      telegramUsername: tgUser?.username || ''
+    };
+
+    onLogin(userData);
+    navigate('/dashboard');
   };
+
+  const canSubmit = Boolean(login.trim() && password.trim()) && !loading;
 
   if (loading) {
     return (
-      <div className="flex-center flex-column" style={{ minHeight: '80vh', gap: '20px' }}>
-        <div style={{ width: '48px', height: '48px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid var(--accent-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <p className="text-accent-primary font-medium">{loadingText}</p>
-        <p className="text-secondary text-sm">TUIT LMS dan ma'lumotlar yuklanmoqda...</p>
+      <div className="flex-center flex-column" style={{ minHeight: '100vh', gap: '14px' }}>
+        <div
+          style={{
+            width: '52px',
+            height: '52px',
+            border: '3px solid rgba(0,255,200,0.2)',
+            borderTop: '3px solid var(--accent-primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }}
+        />
+        <p className="font-medium" style={{ color: 'var(--accent-primary)' }}>{loadingText}</p>
+        <p className="text-secondary text-sm">{t('login.loadingHint')}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-center" style={{ minHeight: '80vh', padding: '20px' }}>
-      <div className="glass-panel p-4" style={{ width: '100%', maxWidth: '400px', animation: 'slideUp 0.4s ease-out' }}>
+    <div className="flex-center" style={{ minHeight: '100vh', padding: '16px' }}>
+      <div
+        className="glass-panel p-4"
+        style={{
+          width: '100%',
+          maxWidth: '420px',
+          border: '1px solid rgba(0,255,200,0.28)',
+          background: 'linear-gradient(145deg, rgba(6,14,27,0.92) 0%, rgba(8,24,40,0.72) 100%)',
+          boxShadow: '0 0 30px rgba(0,255,200,0.12), inset 0 0 40px rgba(0,255,200,0.04)'
+        }}
+      >
         <div className="text-center mb-4">
-          <h1 className="text-gradient" style={{ fontSize: '28px', marginBottom: '4px' }}>Xush Kelibsiz!</h1>
-          <p className="text-secondary text-sm">Aqlli Dars Jadvali tizimiga kiring</p>
-        </div>
-        <div className="flex gap-2 mb-6">
-          <button 
-            onClick={() => setIsLmsMode(false)}
-            className={`flex-1 py-2 rounded-t-lg transition-all ${!isLmsMode ? 'bg-accent-primary text-white border-b-2 border-white' : 'bg-transparent text-secondary'}`}
-            style={{ borderBottom: !isLmsMode ? '2px solid white' : 'none' }}
-          >
-            Oddiy Kirish
-          </button>
-          <button 
-            onClick={() => setIsLmsMode(true)}
-            className={`flex-1 py-2 rounded-t-lg transition-all ${isLmsMode ? 'bg-accent-primary text-white border-b-2 border-white' : 'bg-transparent text-secondary'}`}
-            style={{ borderBottom: isLmsMode ? '2px solid white' : 'none' }}
-          >
-            LMS (TUIT) Kirish
-          </button>
+          <div className="flex-center mb-2" style={{ gap: '8px' }}>
+            <TerminalSquare size={20} color="var(--accent-primary)" />
+            <ShieldCheck size={20} color="var(--success)" />
+          </div>
+          <h1 className="text-gradient" style={{ fontSize: '28px', letterSpacing: '0.3px' }}>
+            {t('login.title')}
+          </h1>
+          <p className="text-secondary text-sm mt-1">{t('login.subtitle')}</p>
+          {tgUser && (
+            <p className="text-xs text-secondary mt-1">
+              {t('login.telegram')}: {tgUser.first_name || 'User'} {tgUser.last_name || ''}
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="flex-column gap-4">
           <div>
-            <label className="text-xs text-secondary mb-1 block">
-              {isLmsMode ? 'HEMIS ID (Login)' : 'Elektron pochta'}
-            </label>
+            <label className="text-xs text-secondary mb-1 block">{t('login.loginLabel')}</label>
             <div className="relative">
               <div className="absolute left-0 top-0 bottom-0 flex-center px-3 text-secondary">
-                <Mail size={18} />
+                <KeyRound size={18} />
               </div>
-              <input 
-                type="text" 
-                required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={isLmsMode ? "1BK34678" : "student@tuit.uz"} 
-                className="w-full rounded" 
+              <input
+                type="text"
+                required
+                value={login}
+                onChange={(event) => setLogin(event.target.value)}
+                placeholder={t('login.loginPlaceholder')}
+                className="w-full rounded"
                 style={{
-                  background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', 
-                  color: 'white', padding: '12px 12px 12px 40px', outline: 'none'
-                }} 
+                  background: 'rgba(0,0,0,0.35)',
+                  border: '1px solid rgba(0,255,200,0.24)',
+                  color: 'white',
+                  padding: '12px 12px 12px 42px',
+                  outline: 'none'
+                }}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-secondary mb-1 block">Parol</label>
+            <label className="text-xs text-secondary mb-1 block">{t('login.passwordLabel')}</label>
             <div className="relative">
               <div className="absolute left-0 top-0 bottom-0 flex-center px-3 text-secondary">
                 <Lock size={18} />
               </div>
-              <input 
-                type="password" 
-                required 
+              <input
+                type="password"
+                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                className="w-full rounded" 
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={t('login.passwordPlaceholder')}
+                className="w-full rounded"
                 style={{
-                  background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', 
-                  color: 'white', padding: '12px 12px 12px 40px', outline: 'none'
-                }} 
+                  background: 'rgba(0,0,0,0.35)',
+                  border: '1px solid rgba(0,255,200,0.24)',
+                  color: 'white',
+                  padding: '12px 12px 12px 42px',
+                  outline: 'none'
+                }}
               />
             </div>
           </div>
 
-          <button type="submit" className="btn-primary mt-2 flex-center gap-2 w-full" style={{ padding: '14px' }}>
-            <LogIn size={18} /> {isLmsMode ? 'LMS orqali kirish' : 'Kirish'}
+          <button
+            type="submit"
+            className="btn-primary mt-1 flex-center gap-2 w-full"
+            disabled={!canSubmit}
+            style={{
+              padding: '13px',
+              background: 'linear-gradient(135deg, #00d1ff 0%, #00ffab 100%)',
+              color: '#02131f',
+              boxShadow: '0 0 20px rgba(0,255,200,0.35)',
+              opacity: canSubmit ? 1 : 0.6,
+              cursor: canSubmit ? 'pointer' : 'not-allowed'
+            }}
+          >
+            <LogIn size={18} /> {t('login.submit')}
           </button>
         </form>
-
-        {!isLmsMode && (
-          <p className="text-center text-xs text-secondary mt-6">
-            Hali hisobingiz yo'qmi? <Link to="/register" className="text-accent-primary font-semibold" style={{ textDecoration: 'none' }}>Ro'yxatdan o'tish</Link>
-          </p>
-        )}
       </div>
     </div>
   );
