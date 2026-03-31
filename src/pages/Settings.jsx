@@ -46,7 +46,7 @@ export default function Settings({ user, onLogout }) {
              <span className="font-semibold" style={{ color: '#22d3ee', fontSize: '14px' }}>{user?.name || user?.email || '--'}</span>
           </div>
           <div className="flex-between" style={{ paddingTop: '12px' }}>
-             <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>Tizim ID (HEMIS):</span>
+             <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>Tizim ID (LMS):</span>
              <span className="font-semibold text-secondary" style={{ fontSize: '14px' }}>{user?.email || '--'}</span>
           </div>
         </div>

@@ -98,8 +98,8 @@ export default function AIChat({ user }) {
     
     if (lowerQ.includes('lms') || lowerQ.includes('sinxron')) {
       return lang === 'ru'
-        ? "Для синхронизации LMS войдите через HEMIS ID и пароль. Данные обновятся автоматически."
-        : "LMS bilan sinxronlash uchun Login sahifasida HEMIS ID hamda parolingizni kiriting. Tizim avtomatik ravishda darslar, baholar va vazifalarni yuklab oladi.";
+        ? "Для синхронизации LMS войдите через LMS ID и пароль. Данные обновятся автоматически."
+        : "LMS bilan sinxronlash uchun Login sahifasida LMS ID hamda parolingizni kiriting. Tizim avtomatik ravishda darslar, baholar va vazifalarni yuklab oladi.";
     }
     
     if (lowerQ.includes('kutubxona') || lowerQ.includes('material')) {

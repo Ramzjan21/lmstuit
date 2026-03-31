@@ -22,7 +22,7 @@ const messages = {
     login: {
       title: 'TATU Cyber Portal',
       subtitle: 'Faqat LMS autentifikatsiya orqali kirish',
-      loginLabel: 'HEMIS Login',
+      loginLabel: 'LMS Login',
       passwordLabel: 'LMS Parol',
       loginPlaceholder: 'Masalan: 1BK34678',
       passwordPlaceholder: '••••••••',
@@ -202,7 +202,7 @@ const messages = {
     login: {
       title: 'TATU Cyber Portal',
       subtitle: 'Вход только через LMS',
-      loginLabel: 'HEMIS Логин',
+      loginLabel: 'LMS Логин',
       passwordLabel: 'Пароль LMS',
       loginPlaceholder: 'Например: 1BK34678',
       passwordPlaceholder: '••••••••',

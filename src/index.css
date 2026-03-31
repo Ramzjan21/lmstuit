@@ -40,6 +40,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+input, textarea {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+}
+
 body {
   font-family: var(--font-base);
   background-color: var(--bg-main);

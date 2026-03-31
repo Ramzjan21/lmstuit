@@ -102,7 +102,7 @@ export default function Login({ onLogin }) {
           <div>
             <label className="text-xs text-secondary mb-1 block">{t('login.loginLabel')}</label>
             <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 flex-center px-3 text-secondary">
+              <div className="absolute left-0 top-0 bottom-0 flex-center px-3 text-secondary" style={{ pointerEvents: 'none' }}>
                 <KeyRound size={18} />
               </div>
               <input
@@ -126,7 +126,7 @@ export default function Login({ onLogin }) {
           <div>
             <label className="text-xs text-secondary mb-1 block">{t('login.passwordLabel')}</label>
             <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 flex-center px-3 text-secondary">
+              <div className="absolute left-0 top-0 bottom-0 flex-center px-3 text-secondary" style={{ pointerEvents: 'none' }}>
                 <Lock size={18} />
               </div>
               <input
