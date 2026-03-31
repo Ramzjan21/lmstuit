@@ -175,84 +175,74 @@ export default function Freelance({ user }) {
         </div>
       ) : (
         <>
-          {/* Podium */}
-          {top3.length > 0 && (
-             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '10px', marginTop: '10px', marginBottom: '30px' }}>
-             {/* 2nd Place */}
-             {top3[1] && (
-               <div onClick={() => openProfile(top3[1])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', paddingBottom: '10px' }}>
-                 <div style={{ position: 'relative', width: 70, height: 70 }}>
-                   <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', border: '3px solid #0ea5e9', boxShadow: '0 0 15px rgba(14,165,233,0.3)' }}>
-                     {getInitials(top3[1].name)}
-                   </div>
-                   <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', background: '#0ea5e9', color: 'white', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>2</div>
-                 </div>
-                 <p className="font-semibold mt-3" style={{ fontSize: '13px', textAlign: 'center', lineHeight: 1.1, height: '30px', overflow: 'hidden' }}>{top3[1].name}</p>
-                 <p style={{ fontSize: '15px', color: '#38bdf8', fontWeight: 'bold', marginTop: '4px' }}>{top3[1].rating > 0 ? top3[1].rating : '0.0'}</p>
-               </div>
-             )}
-
-             {/* 1st Place */}
-             {top3[0] && (
-               <div onClick={() => openProfile(top3[0])} style={{ flex: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', zIndex: 10 }}>
-                 <Crown size={32} color="#facc15" style={{ marginBottom: '-6px', filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))', zIndex: 2 }} />
-                 <div style={{ position: 'relative', width: 90, height: 90 }}>
-                   <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #facc15, #fef08a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', fontWeight: 'bold', color: '#1a1a1a', border: '3px solid #facc15', boxShadow: '0 0 20px rgba(250,204,21,0.4)' }}>
-                     {getInitials(top3[0].name)}
-                   </div>
-                   <div style={{ position: 'absolute', bottom: -10, left: '50%', transform: 'translateX(-50%)', background: '#facc15', color: '#1a1a1a', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>1</div>
-                 </div>
-                 <p className="font-semibold mt-3" style={{ fontSize: '14px', textAlign: 'center', lineHeight: 1.2, height: '34px', overflow: 'hidden' }}>{top3[0].name}</p>
-                 <p style={{ fontSize: '18px', color: '#facc15', fontWeight: 'bold', marginTop: '2px' }}>{top3[0].rating > 0 ? top3[0].rating : '0.0'}</p>
-               </div>
-             )}
-
-             {/* 3rd Place */}
-             {top3[2] && (
-               <div onClick={() => openProfile(top3[2])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', paddingBottom: '10px' }}>
-                 <div style={{ position: 'relative', width: 70, height: 70 }}>
-                   <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #34d399)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', border: '3px solid #10b981', boxShadow: '0 0 15px rgba(16,185,129,0.3)' }}>
-                     {getInitials(top3[2].name)}
-                   </div>
-                   <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', background: '#10b981', color: 'white', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>3</div>
-                 </div>
-                 <p className="font-semibold mt-3" style={{ fontSize: '13px', textAlign: 'center', lineHeight: 1.1, height: '30px', overflow: 'hidden' }}>{top3[2].name}</p>
-                 <p style={{ fontSize: '15px', color: '#34d399', fontWeight: 'bold', marginTop: '4px' }}>{top3[2].rating > 0 ? top3[2].rating : '0.0'}</p>
-               </div>
-             )}
-           </div>
-          )}
-
-          {/* List Section */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '24px 24px 0 0', padding: '20px', margin: '0 -20px 0 -20px' }}>
-            {rest.map((pItem, index) => (
-              <div 
-                key={pItem.id} 
-                onClick={() => openProfile(pItem)}
-                className="flex-between py-3" 
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', padding: '12px 10px', borderRadius: '12px' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'rgba(255,255,255,0.3)', width: '20px', textAlign: 'center' }}>{index + 4}</span>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,165,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 'bold', color: '#ffa500' }}>
-                    {getInitials(pItem.name)}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p className="font-semibold" style={{ fontSize: '14px', color: 'white' }}>{pItem.name}</p>
-                    <p className="text-secondary" style={{ fontSize: '11px', marginTop: '2px' }}>{pItem.title}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: pItem.rating > 0 ? '#facc15' : 'rgba(255,255,255,0.5)' }}>{pItem.rating > 0 ? pItem.rating : '0.0'}</span>
-                    <Star size={12} color={pItem.rating > 0 ? '#facc15' : 'rgba(255,255,255,0.3)'} fill={pItem.rating > 0 ? '#facc15' : 'transparent'} />
-                  </div>
-                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{pItem.reviewCount || 0} sharh</span>
-                </div>
-              </div>
-            ))}
+          {/* Table Section */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', overflowX: 'auto', marginTop: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,165,0,0.1)', color: '#ffa500', fontSize: '13px' }}>
+                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>#</th>
+                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Xizmat Sohasi va Ismi</th>
+                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', width: '35%' }}>Batafsil Tavsifi</th>
+                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Narx va Aloqa</th>
+                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>Reyting & Sharh</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedProfiles.map((pItem, index) => {
+                  const isTop3 = index < 3 && pItem.rating > 0;
+                  return (
+                  <tr 
+                    key={pItem.id} 
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s', background: isTop3 ? 'rgba(250,204,21,0.02)' : 'transparent' }}
+                  >
+                    <td style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', color: isTop3 ? '#facc15' : 'rgba(255,255,255,0.4)', verticalAlign: 'top' }}>
+                       {index + 1}
+                    </td>
+                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                      <p className="font-semibold" style={{ fontSize: '14px', color: 'white' }}>{pItem.title}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                         <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,165,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#ffa500', fontWeight: 'bold' }}>
+                            {getInitials(pItem.name)}
+                         </div>
+                         <p className="text-secondary" style={{ fontSize: '12px' }}>{pItem.name}</p>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>{pItem.description}</p>
+                    </td>
+                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                         <span style={{ background: 'rgba(34,211,238,0.1)', color: '#22d3ee', padding: '4px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
+                            {pItem.price}
+                         </span>
+                         <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '3px 6px', borderRadius: '6px', fontSize: '11px' }}>
+                            {pItem.contact}
+                         </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px', verticalAlign: 'top', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '12px' }}>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                           <span style={{ fontSize: '16px', fontWeight: 'bold', color: pItem.rating > 0 ? '#facc15' : 'rgba(255,255,255,0.5)' }}>{pItem.rating > 0 ? pItem.rating : '0.0'}</span>
+                           <Star size={14} color={pItem.rating > 0 ? '#facc15' : 'rgba(255,255,255,0.3)'} fill={pItem.rating > 0 ? '#facc15' : 'transparent'} />
+                         </div>
+                         <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>{pItem.reviewCount || 0} sharh</span>
+                         <button 
+                           onClick={() => openProfile(pItem)}
+                           style={{ marginTop: '10px', background: 'rgba(255,165,0,0.15)', color: '#ffa500', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', width: '100%', transition: 'background 0.2s' }}
+                           onMouseOver={(e) => e.target.style.background = 'rgba(255,165,0,0.25)'}
+                           onMouseOut={(e) => e.target.style.background = 'rgba(255,165,0,0.15)'}
+                         >
+                           Baho / Sharh
+                         </button>
+                      </div>
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
             {sortedProfiles.length === 0 && (
-              <p className="text-center text-secondary text-sm mt-4">Hech qanday maxsus xizmat elon qilinmadi!</p>
+              <p className="text-center text-secondary text-sm my-6">Hech qanday maxsus xizmat elon qilinmadi!</p>
             )}
           </div>
         </>
