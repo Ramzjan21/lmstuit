@@ -13,7 +13,8 @@ import {
   UserRound,
   Bot,
   Users,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Briefcase
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lmsService } from '../services/lmsService';
@@ -273,7 +274,7 @@ export default function Dashboard({ user, onLogout }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: '10px', marginBottom: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '10px', marginBottom: '16px' }}>
         <button
           onClick={() => navigate('/teachers')}
           className="glass-panel p-3"
@@ -284,6 +285,18 @@ export default function Dashboard({ user, onLogout }) {
             <span className="font-semibold text-sm">{t('dashboard.teachers')}</span>
           </div>
           <p className="text-xs text-secondary mt-2">{t('dashboard.teachersDesc')}</p>
+        </button>
+
+        <button
+          onClick={() => navigate('/freelance')}
+          className="glass-panel p-3"
+          style={{ border: 'none', textAlign: 'left', cursor: 'pointer', background: 'rgba(245,158,11,0.12)' }}
+        >
+          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
+            <Briefcase size={16} color="#f59e0b" />
+            <span className="font-semibold text-sm">Xizmatlar</span>
+          </div>
+          <p className="text-xs text-secondary mt-2">Talabalar xizmati (Freelance)</p>
         </button>
       </div>
 

@@ -33,3 +33,28 @@ const leaderboardUserSchema = new mongoose.Schema({
 export const Teacher = mongoose.models.Teacher || mongoose.model('Teacher', teacherSchema);
 export const Review = mongoose.models.Review || mongoose.model('Review', reviewSchema);
 export const LeaderboardUser = mongoose.models.LeaderboardUser || mongoose.model('LeaderboardUser', leaderboardUserSchema);
+
+const freelancerSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true }, // Typically email
+  name: { type: String, required: true },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  price: { type: String, required: true },
+  contact: { type: String, required: true },
+  rating: { type: Number, default: 0 },
+  reviewCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const freelanceReviewSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  freelancerId: { type: String, required: true },
+  authorEmail: { type: String, required: true },
+  authorName: { type: String, required: true },
+  text: { type: String, required: true },
+  rating: { type: Number, required: true },
+  date: { type: Date, default: Date.now }
+});
+
+export const Freelancer = mongoose.models.Freelancer || mongoose.model('Freelancer', freelancerSchema);
+export const FreelanceReview = mongoose.models.FreelanceReview || mongoose.model('FreelanceReview', freelanceReviewSchema);

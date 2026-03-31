@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { Teacher, Review, LeaderboardUser } from './models.mjs';
+import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview } from './models.mjs';
 import {
   fetchAcademicBundle,
   fetchCourses,
@@ -353,6 +353,90 @@ app.post('/api/leaderboard', requireSession, async (req, res) => {
       return res.json({ ok: true });
     }
     res.json({ ok: false, message: 'Mongo disconnected' });
+  } catch(error) {
+    sendError(res, error);
+  }
+});
+
+// --- Freelancers API ---
+app.get('/api/freelancers', async (req, res) => {
+  try {
+    let freelancers = [];
+    if (isMongoConnected) {
+      freelancers = await Freelancer.find({}).sort({ rating: -1, reviewCount: -1 }).lean();
+    }
+    res.json({ ok: true, freelancers });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+app.post('/api/freelancers', requireSession, async (req, res) => {
+  try {
+    const { title, description, price, contact } = req.body;
+    const userEmail = req.session.lmsUser?.login;
+    const userName = req.session.lmsUser?.name;
+    
+    if (!userEmail) return res.status(401).json({ error: 'Auth required' });
+    if (!title || !description || !price || !contact) return res.status(400).json({ error: 'Barcha maydonlar majburiy' });
+
+    if (isMongoConnected) {
+      await Freelancer.findOneAndUpdate(
+        { id: userEmail },
+        { id: userEmail, name: userName, title, description, price, contact },
+        { upsert: true, new: true }
+      );
+      return res.json({ ok: true });
+    }
+    res.json({ ok: false, error: 'DB ishlamayapti' });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+app.get('/api/freelancers/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let reviews = [];
+    if (isMongoConnected) {
+      reviews = await FreelanceReview.find({ freelancerId: id }).sort({ date: -1 }).lean();
+    }
+    res.json({ ok: true, reviews });
+  } catch(error) {
+    sendError(res, error);
+  }
+});
+
+app.post('/api/freelancers/:id/reviews', requireSession, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text, rating } = req.body;
+    const authorEmail = req.session.lmsUser?.login;
+    const authorName = req.session.lmsUser?.name;
+
+    if (!authorEmail) return res.status(401).json({ error: 'Auth required' });
+    if (!text || !rating) return res.status(400).json({ error: 'Matn/Rating majburiy' });
+    if (authorEmail === id) return res.status(400).json({ error: 'O`zingizga baho bera olmaysiz' });
+
+    if (isMongoConnected) {
+      const newReview = new FreelanceReview({
+        id: Date.now().toString(),
+        freelancerId: id,
+        authorEmail,
+        authorName,
+        text,
+        rating: Number(rating)
+      });
+      await newReview.save();
+
+      const allReviews = await FreelanceReview.find({ freelancerId: id }).lean();
+      const avg = allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length;
+      await Freelancer.findOneAndUpdate({ id }, { rating: avg.toFixed(1), reviewCount: allReviews.length });
+
+      res.json({ ok: true, reviews: allReviews });
+    } else {
+      res.json({ ok: false, error: 'DB ishlamayapti' });
+    }
   } catch(error) {
     sendError(res, error);
   }

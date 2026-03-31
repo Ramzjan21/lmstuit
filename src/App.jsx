@@ -10,6 +10,7 @@ import AIChat from './pages/AIChat';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
 import Teachers from './pages/Teachers';
+import Freelance from './pages/Freelance';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import { getJson, removeKey, setJson } from './services/storageService';
@@ -100,6 +101,7 @@ function App() {
             <Route path="profile" element={<Profile user={user} />} />
             <Route path="leaderboard" element={<Leaderboard user={user} />} />
             <Route path="teachers" element={<Teachers user={user} />} />
+            <Route path="freelance" element={<Freelance user={user} />} />
             <Route path="settings" element={<Settings user={user} onLogout={handleLogout} />} />
           </Route>
         </Routes>
