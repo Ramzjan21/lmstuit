@@ -349,27 +349,25 @@ export default function Freelance({ user }) {
                  ))}
                </div>
  
-               <form onSubmit={submitReview} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-                 <div style={{ flex: 1 }}>
-                   <textarea
-                     placeholder="Xizmat sifati haqdagi fikringizni yozing..."
-                     value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="2"
-                     className="tg-input"
-                     style={{ resize: 'none' }}
-                   />
-                 </div>
+               <form onSubmit={submitReview} className="flex-column gap-3 mt-2">
+                 <textarea
+                   placeholder="Xizmat sifati haqdagi fikringizni yozing..."
+                   value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="3"
+                   className="tg-input"
+                   style={{ resize: 'none' }}
+                 />
                  <button
                    type="submit" disabled={submitting || !newReview.trim() || newRating === 0}
                    className="flex-center"
                    style={{
-                     minWidth: '50px', height: '50px',
+                     width: '100%', height: '50px',
                      background: (!newReview.trim() || newRating === 0) ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-                     border: 'none', borderRadius: '16px', color: '#1a1a1a',
+                     border: 'none', borderRadius: '14px', color: '#1a1a1a', fontWeight: 'bold', fontSize: '15px',
                      cursor: (!newReview.trim() || newRating === 0) ? 'not-allowed' : 'pointer', transition: '0.2s',
                      boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.4)'
                    }}
                  >
-                   <Send size={20} />
+                   Sharh yuborish <Send size={18} style={{ marginLeft: '8px' }} />
                  </button>
                </form>
              </div>
@@ -401,8 +399,8 @@ export default function Freelance({ user }) {
                 ) : (
                 <form onSubmit={submitAd} className="flex-column gap-3">
                   <div>
-                     <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Qaysi soha? (Masalan: Tarjimon, Web dasturchi, Dizayner)</label>
-                     <input type="text" required value={formTitle} onChange={e => setFormTitle(e.target.value)} disabled={submitting} className="tg-input" placeholder="Sohangiz nomini yozing..." />
+                     <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Qaysi soha?</label>
+                     <input type="text" required value={formTitle} onChange={e => setFormTitle(e.target.value)} disabled={submitting} className="tg-input" placeholder="Tarjimon, Web dasturchi..." />
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Xizmat tavsifi</label>
@@ -410,7 +408,7 @@ export default function Freelance({ user }) {
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Narx / Tolov</label>
-                     <input type="text" required value={formPrice} onChange={e => setFormPrice(e.target.value)} disabled={submitting} className="tg-input" placeholder="Masalan: 50,000 so'm yoki Kelishilgan holda" />
+                     <input type="text" required value={formPrice} onChange={e => setFormPrice(e.target.value)} disabled={submitting} className="tg-input" placeholder="50,000 so'm / Kelishilgan" />
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>Aloqa uchun (Telegram / Tel)</label>

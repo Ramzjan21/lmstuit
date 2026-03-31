@@ -293,27 +293,25 @@ export default function Teachers({ user }) {
                 ))}
               </div>
 
-              <form onSubmit={submitReview} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <textarea
-                    placeholder="Ustoz haqdagi fikringizni yozing..."
-                    value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="2"
-                    className="tg-input"
-                    style={{ resize: 'none' }}
-                  />
-                </div>
+              <form onSubmit={submitReview} className="flex-column gap-3 mt-2">
+                <textarea
+                  placeholder="Ustoz haqdagi fikringizni yozing..."
+                  value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="3"
+                  className="tg-input"
+                  style={{ resize: 'none' }}
+                />
                 <button
                   type="submit" disabled={submitting || !newReview.trim() || newRating === 0}
                   className="flex-center"
                   style={{
-                    minWidth: '50px', height: '50px',
+                    width: '100%', height: '50px',
                     background: (!newReview.trim() || newRating === 0) ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #a855f7, #c084fc)',
-                    border: 'none', borderRadius: '16px', color: 'white',
+                    border: 'none', borderRadius: '14px', color: 'white', fontWeight: 'bold', fontSize: '15px',
                     cursor: (!newReview.trim() || newRating === 0) ? 'not-allowed' : 'pointer', transition: '0.2s',
                     boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 4px 15px rgba(168, 85, 247, 0.4)'
                   }}
                 >
-                  <Send size={20} />
+                  Sharh yuborish <Send size={18} style={{ marginLeft: '8px' }} />
                 </button>
               </form>
             </div>

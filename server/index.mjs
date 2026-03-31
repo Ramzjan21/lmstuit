@@ -349,6 +349,18 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    if (isMongoConnected) {
+      const users = await LeaderboardUser.find({}).sort({ rating: -1 }).lean();
+      return res.json({ ok: true, users });
+    }
+    return res.json({ ok: false, error: 'Database disconnected' });
+  } catch(error) {
+    sendError(res, error);
+  }
+});
+
 app.post('/api/leaderboard', requireSession, async (req, res) => {
   try {
     const { userEmail, ...data } = req.body;
@@ -360,8 +372,11 @@ app.post('/api/leaderboard', requireSession, async (req, res) => {
     if (isMongoConnected) {
       await LeaderboardUser.findOneAndUpdate(
         { userEmail }, 
-        { ...data, userEmail, updatedAt: new Date() }, 
-        { upsert: true, new: true }
+        { 
+          $set: { ...data, updatedAt: new Date() },
+          $setOnInsert: { userEmail }
+        }, 
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       return res.json({ ok: true });
     }
