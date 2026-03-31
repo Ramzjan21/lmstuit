@@ -298,10 +298,8 @@ export default function Teachers({ user }) {
                   <textarea
                     placeholder="Ustoz haqdagi fikringizni yozing..."
                     value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="2"
-                    style={{
-                      width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '16px', padding: '14px', color: 'white', outline: 'none', resize: 'none', fontSize: '14px', fontFamily: 'inherit'
-                    }}
+                    className="tg-input"
+                    style={{ resize: 'none' }}
                   />
                 </div>
                 <button

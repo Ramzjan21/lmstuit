@@ -214,15 +214,7 @@ export default function AIChat({ user }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             placeholder={t('ai.inputPlaceholder')}
-            className="flex-1 rounded"
-            style={{
-              background: 'rgba(0,0,0,0.2)',
-              border: '1px solid var(--border-color)',
-              color: 'white',
-              padding: '12px 16px',
-              outline: 'none',
-              fontSize: '14px'
-            }}
+            className="tg-input"
             disabled={loading}
           />
           <button

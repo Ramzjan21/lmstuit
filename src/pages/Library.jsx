@@ -259,19 +259,8 @@ export default function Library({ user }) {
             value={transcript}
             onChange={(event) => setTranscript(event.target.value)}
             placeholder={t('library.notePlaceholder')}
-            style={{
-              width: '100%',
-              height: '150px',
-              background: 'rgba(0,0,0,0.2)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              padding: '12px',
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-base)',
-              resize: 'none',
-              marginBottom: '16px',
-              outline: 'none'
-            }}
+            className="tg-input"
+            style={{ height: '150px', resize: 'none', marginBottom: '16px' }}
           />
 
           <div className="flex-between">
