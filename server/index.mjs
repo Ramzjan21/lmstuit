@@ -196,6 +196,7 @@ app.get('/api/lms/sync-all', requireSession, async (req, res) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dataDir = path.join(__dirname, 'data');
+const distDir = path.join(__dirname, '..', 'dist');
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
@@ -356,6 +357,13 @@ app.post('/api/leaderboard', requireSession, async (req, res) => {
     sendError(res, error);
   }
 });
+
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`[lms-proxy] running on http://localhost:${PORT}`);
