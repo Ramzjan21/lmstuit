@@ -10,6 +10,7 @@ import AIChat from './pages/AIChat';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
 import Teachers from './pages/Teachers';
+import Settings from './pages/Settings';
 import Login from './pages/Login';
 import { getJson, removeKey, setJson } from './services/storageService';
 import { lmsService } from './services/lmsService';
@@ -63,6 +64,13 @@ function App() {
     setLang('uz');
   };
 
+  const changeLanguage = async (newLang) => {
+    setLang(newLang);
+    if (user?.email) {
+      await setJson(`lang_${user.email}`, newLang);
+    }
+  };
+
   if (loading) {
     return <div className="flex-center" style={{ height: '100vh', background: 'var(--bg-main)', color: 'white' }}>{translate(lang, 'app.loading')}</div>;
   }
@@ -70,7 +78,7 @@ function App() {
   const t = (key, params) => translate(lang, key, params);
 
   return (
-    <I18nContext.Provider value={{ lang, t }}>
+    <I18nContext.Provider value={{ lang, t, changeLanguage }}>
       <Router>
         <Routes>
           {/* Public Routes */}
@@ -92,6 +100,7 @@ function App() {
             <Route path="profile" element={<Profile user={user} />} />
             <Route path="leaderboard" element={<Leaderboard user={user} />} />
             <Route path="teachers" element={<Teachers user={user} />} />
+            <Route path="settings" element={<Settings user={user} onLogout={handleLogout} />} />
           </Route>
         </Routes>
       </Router>

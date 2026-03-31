@@ -12,7 +12,8 @@ import {
   Trophy,
   UserRound,
   Bot,
-  Users
+  Users,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lmsService } from '../services/lmsService';
@@ -175,18 +176,18 @@ export default function Dashboard({ user, onLogout }) {
             onClick={syncNow}
             disabled={syncing}
             className="glass-panel p-2 flex-center"
-            style={{ border: 'none', background: 'rgba(0,255,200,0.12)', color: 'var(--accent-primary)', cursor: 'pointer' }}
-            title="LMS sync"
+            style={{ border: 'none', background: 'rgba(34,211,238,0.12)', color: 'var(--accent-primary)', cursor: 'pointer', borderRadius: '12px' }}
+            title="LMS ma'lumotlarini yangilash"
           >
-            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+            <RefreshCw size={20} className={syncing ? 'animate-spin' : ''} />
           </button>
           <button
-            onClick={onLogout}
+            onClick={() => navigate('/settings')}
             className="glass-panel p-2 flex-center"
-            style={{ border: 'none', background: 'rgba(255,60,110,0.15)', color: '#ff4f7b', cursor: 'pointer' }}
-            title="Chiqish"
+            style={{ border: 'none', background: 'rgba(255,255,255,0.08)', color: 'white', cursor: 'pointer', borderRadius: '12px' }}
+            title="Sozlamalar"
           >
-            <LogOut size={18} />
+            <SettingsIcon size={20} />
           </button>
         </div>
       </div>
