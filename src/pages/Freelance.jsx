@@ -175,74 +175,80 @@ export default function Freelance({ user }) {
         </div>
       ) : (
         <>
-          {/* Table Section */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', overflowX: 'auto', marginTop: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-              <thead>
-                <tr style={{ background: 'rgba(255,165,0,0.1)', color: '#ffa500', fontSize: '13px' }}>
-                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>#</th>
-                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Xizmat Sohasi va Ismi</th>
-                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', width: '35%' }}>Batafsil Tavsifi</th>
-                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Narx va Aloqa</th>
-                  <th style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>Reyting & Sharh</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedProfiles.map((pItem, index) => {
-                  const isTop3 = index < 3 && pItem.rating > 0;
-                  return (
-                  <tr 
-                    key={pItem.id} 
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s', background: isTop3 ? 'rgba(250,204,21,0.02)' : 'transparent' }}
-                  >
-                    <td style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', color: isTop3 ? '#facc15' : 'rgba(255,255,255,0.4)', verticalAlign: 'top' }}>
-                       {index + 1}
-                    </td>
-                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
-                      <p className="font-semibold" style={{ fontSize: '14px', color: 'white' }}>{pItem.title}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                         <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,165,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#ffa500', fontWeight: 'bold' }}>
-                            {getInitials(pItem.name)}
-                         </div>
-                         <p className="text-secondary" style={{ fontSize: '12px' }}>{pItem.name}</p>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
-                      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>{pItem.description}</p>
-                    </td>
-                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
-                         <span style={{ background: 'rgba(34,211,238,0.1)', color: '#22d3ee', padding: '4px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
-                            {pItem.price}
-                         </span>
-                         <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '3px 6px', borderRadius: '6px', fontSize: '11px' }}>
-                            {pItem.contact}
-                         </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px', verticalAlign: 'top', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '12px' }}>
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                           <span style={{ fontSize: '16px', fontWeight: 'bold', color: pItem.rating > 0 ? '#facc15' : 'rgba(255,255,255,0.5)' }}>{pItem.rating > 0 ? pItem.rating : '0.0'}</span>
-                           <Star size={14} color={pItem.rating > 0 ? '#facc15' : 'rgba(255,255,255,0.3)'} fill={pItem.rating > 0 ? '#facc15' : 'transparent'} />
-                         </div>
-                         <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>{pItem.reviewCount || 0} sharh</span>
-                         <button 
-                           onClick={() => openProfile(pItem)}
-                           style={{ marginTop: '10px', background: 'rgba(255,165,0,0.15)', color: '#ffa500', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', width: '100%', transition: 'background 0.2s' }}
-                           onMouseOver={(e) => e.target.style.background = 'rgba(255,165,0,0.25)'}
-                           onMouseOut={(e) => e.target.style.background = 'rgba(255,165,0,0.15)'}
-                         >
-                           Baho / Sharh
-                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
+          {/* Smart Card List Section */}
+          <div className="flex-column gap-3 mt-3">
+            {sortedProfiles.map((pItem, index) => {
+              const rank = index + 1;
+              const isTop = rank <= 3 && pItem.rating > 0;
+              let rankStyle = { color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)' };
+              if (isTop) {
+                 if (rank === 1) rankStyle = { color: '#1a1a1a', background: 'linear-gradient(135deg, #facc15, #fef08a)' };
+                 else if (rank === 2) rankStyle = { color: '#fff', background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)' };
+                 else rankStyle = { color: '#fff', background: 'linear-gradient(135deg, #10b981, #34d399)' };
+              }
+
+              return (
+              <div 
+                key={pItem.id} 
+                className="glass-panel"
+                style={{
+                   padding: '16px', borderRadius: '20px', display: 'flex', flexDirection: 'column', gap: '12px',
+                   background: isTop ? (rank === 1 ? 'rgba(250,204,21,0.05)' : 'rgba(255,255,255,0.03)') : 'rgba(255,255,255,0.02)',
+                   border: isTop && rank === 1 ? '1px solid rgba(250,204,21,0.3)' : '1px solid rgba(255,255,255,0.05)'
+                }}
+              >
+                <div className="flex-between" style={{ alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
+                     <div className="flex-center" style={{ width: 32, height: 32, borderRadius: '50%', ...rankStyle, fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}>
+                        {rank}
+                     </div>
+                     <div>
+                       <p className="font-bold" style={{ fontSize: '15px', color: isTop && rank === 1 ? '#facc15' : 'white', lineHeight: '1.2' }}>{pItem.title}</p>
+                       <p className="text-secondary mt-1" style={{ fontSize: '12px' }}>{pItem.name}</p>
+                     </div>
+                  </div>
+                  <div className="flex-column" style={{ alignItems: 'flex-end', marginLeft: '12px' }}>
+                     <div className="flex-center" style={{ gap: '4px' }}>
+                       <span style={{ fontSize: '16px', fontWeight: 'bold', color: pItem.rating > 0 ? '#f59e0b' : 'rgba(255,255,255,0.5)' }}>{pItem.rating > 0 ? pItem.rating : 'new'}</span>
+                       <Star size={14} color={pItem.rating > 0 ? '#f59e0b' : 'rgba(255,255,255,0.2)'} fill={pItem.rating > 0 ? '#f59e0b' : 'transparent'} />
+                     </div>
+                     <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{pItem.reviewCount || 0} sharh</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                   <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{pItem.description}</p>
+                </div>
+
+                <div className="flex-between" style={{ alignItems: 'center', marginTop: '4px', gap: '10px', flexWrap: 'wrap' }}>
+                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', flex: 1 }}>
+                     <span style={{ background: 'rgba(34,211,238,0.1)', color: '#22d3ee', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
+                        {pItem.price}
+                     </span>
+                     <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
+                        {pItem.contact}
+                     </span>
+                   </div>
+                   
+                   <button 
+                     onClick={() => openProfile(pItem)}
+                     style={{
+                        background: 'rgba(255,165,0,0.15)', color: '#ffa500', border: 'none', padding: '8px 14px',
+                        borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: 'background 0.2s', flexShrink: 0
+                     }}
+                     onMouseOver={(e) => e.target.style.background = 'rgba(255,165,0,0.25)'}
+                     onMouseOut={(e) => e.target.style.background = 'rgba(255,165,0,0.15)'}
+                   >
+                     Sharh qoldirish
+                   </button>
+                </div>
+              </div>
+            )})}
+            
             {sortedProfiles.length === 0 && (
-              <p className="text-center text-secondary text-sm my-6">Hech qanday maxsus xizmat elon qilinmadi!</p>
+              <div className="text-center p-4">
+                 <p className="text-secondary text-sm my-6">Hech qanday maxsus xizmat elon qilinmadi!</p>
+              </div>
             )}
           </div>
         </>
