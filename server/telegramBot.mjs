@@ -20,7 +20,19 @@ export const initBot = (serverBaseUrl) => {
     return null;
   }
 
-  bot = new TelegramBot(BOT_TOKEN, { polling: true });
+  // On local dev, run without polling to avoid 409 conflict with Render instance.
+  // Set ENABLE_TG_POLLING=true in .env.local only if you want polling locally.
+  const isProduction = process.env.NODE_ENV === 'production';
+  const forcePolling = process.env.ENABLE_TG_POLLING === 'true';
+  const usePolling = isProduction || forcePolling;
+
+  bot = new TelegramBot(BOT_TOKEN, { polling: usePolling });
+
+  if (!usePolling) {
+    console.log('[TG-BOT] Bot xabar yuborish rejimida (polling o\'chiq - lokal dev)');
+    return bot;
+  }
+
   console.log('[TG-BOT] Telegram bot polling rejimida ishga tushdi');
 
   const BASE = serverBaseUrl || `http://localhost:${process.env.PORT || 3030}`;
