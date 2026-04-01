@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader, Sparkles } from 'lucide-react';
 import { aiService } from '../services/aiService';
 import { useI18n } from '../i18n';
+import { formatTime } from '../utils/dateUtils';
 
 export default function AIChat({ user }) {
   const { t, lang } = useI18n();
@@ -11,14 +12,15 @@ export default function AIChat({ user }) {
       role: 'assistant',
       content:
         lang === 'ru'
-          ? `Здравствуйте, ${user?.name || 'Студент'}! Я ваш персональный AI-помощник. Готов помочь с расписанием, заданиями, оценками и учебным процессом. 🎓`
-          : `Salom ${user?.name || 'Talaba'}! Men sizning shaxsiy AI yordamchingizman. Darslar, vazifalar, baholar va o'quv jarayoni bo'yicha savollaringizga javob berishga tayyorman. 🎓`,
+          ? `Здравствуйте, ${user?.name || 'Студент'}! Я ваш персональный AI-помощник. Задайте вопрос на любом языке — отвечу на том же! 🎓`
+          : `Salom ${user?.name || 'Talaba'}! Men sizning shaxsiy AI yordamchingizman. Istalgan tilda yozing — o'sha tilda javob beraman! 🎓`,
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,6 +29,14 @@ export default function AIChat({ user }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea like Telegram
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [input]);
 
   const buildConversation = (nextUserText) => {
     const recentMessages = messages
@@ -41,7 +51,6 @@ export default function AIChat({ user }) {
     if (!input.trim() || loading) return;
 
     const userText = input.trim();
-
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -56,7 +65,8 @@ export default function AIChat({ user }) {
     const conversation = buildConversation(userText);
     const aiResult = await aiService.getReply({
       conversation,
-      userName: user?.name
+      userName: user?.name,
+      userLang: lang
     });
 
     const assistantText = aiResult.success
@@ -75,166 +85,184 @@ export default function AIChat({ user }) {
     setLoading(false);
   };
 
-  const generateFallbackResponse = (question) => {
-    const lowerQ = question.toLowerCase();
-    
-    if (lowerQ.includes('dars') || lowerQ.includes('jadval')) {
-      return lang === 'ru'
-        ? "Чтобы увидеть расписание, откройте раздел 'Расписание'. Там есть пары, время и аудитории. Нужен конкретный день или предмет?"
-        : "Sizning dars jadvalingizni ko'rish uchun 'Jadval' bo'limiga o'ting. U yerda barcha darslaringiz, vaqtlari va xonalar haqida ma'lumot bor. Qaysi kun yoki dars haqida batafsil ma'lumot kerak?";
+  const handleKeyDown = (e) => {
+    // Send on Enter, newline on Shift+Enter (like Telegram)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
-    
-    if (lowerQ.includes('vazifa') || lowerQ.includes('topshiriq')) {
-      return lang === 'ru'
-        ? "Ваши задания находятся в разделе 'Задания'. Там указаны сроки и приоритеты."
-        : "Vazifalaringizni 'Vazifalar' bo'limida ko'rishingiz mumkin. U yerda barcha topshiriqlar, muddatlar va prioritetlar ko'rsatilgan.";
-    }
-    
-    if (lowerQ.includes('baho') || lowerQ.includes('ball')) {
-      return lang === 'ru'
-        ? "Оценки смотрите в разделе 'Посещаемость'. Там есть баллы, GPA и NB."
-        : "Baholaringizni 'Baholar' sahifasida ko'rishingiz mumkin. U yerda har bir fan bo'yicha ballaringiz, GPA va NB (qoldirgan darslar) haqida ma'lumot bor.";
-    }
-    
-    if (lowerQ.includes('lms') || lowerQ.includes('sinxron')) {
-      return lang === 'ru'
-        ? "Для синхронизации LMS войдите через LMS ID и пароль. Данные обновятся автоматически."
-        : "LMS bilan sinxronlash uchun Login sahifasida LMS ID hamda parolingizni kiriting. Tizim avtomatik ravishda darslar, baholar va vazifalarni yuklab oladi.";
-    }
-    
-    if (lowerQ.includes('kutubxona') || lowerQ.includes('material')) {
-      return lang === 'ru'
-        ? "В разделе 'Библиотека' можно хранить учебные материалы и голосовые заметки."
-        : "Kutubxona bo'limida o'quv materiallari va ovozli qaydlaringizni saqlashingiz mumkin.";
-    }
-    
-    if (lowerQ.includes('yordam') || lowerQ.includes('qanday')) {
-      return lang === 'ru'
-        ? "Я могу помочь по темам:\n\n📅 Расписание\n📝 Задания\n📊 Оценки\n🔄 LMS синхронизация\n📚 Библиотека\n\nПо какой теме вопрос?"
-        : "Men sizga quyidagi mavzularda yordam bera olaman:\n\n📅 Dars jadvali va darslar haqida\n📝 Vazifalar va topshiriqlar\n📊 Baholar va akademik ko'rsatkichlar\n🔄 LMS integratsiyasi\n📚 Kutubxona va materiallar\n\nQaysi mavzu bo'yicha savol berishni xohlaysiz?";
-    }
-    
-    return lang === 'ru'
-      ? "Понял ваш вопрос. Уточните, пожалуйста, тему: расписание, задания, оценки или LMS синхронизация. 😊"
-      : "Savolingizni tushundim. Darslar, vazifalar, baholar yoki LMS integratsiyasi haqida aniqroq savol bering, men yordam berishga harakat qilaman! 😊";
   };
 
-  const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+  const generateFallbackResponse = (question) => {
+    const lowerQ = question.toLowerCase();
+    const isRu = /[а-яё]/i.test(question);
+
+    if (lowerQ.includes('dars') || lowerQ.includes('jadval') || lowerQ.includes('расписан') || lowerQ.includes('занят')) {
+      return isRu
+        ? "Чтобы увидеть расписание, откройте раздел 'Расписание'. Там есть пары, время и аудитории."
+        : "Sizning dars jadvalingizni ko'rish uchun 'Jadval' bo'limiga o'ting.";
+    }
+    if (lowerQ.includes('vazifa') || lowerQ.includes('topshiriq') || lowerQ.includes('задан') || lowerQ.includes('homework')) {
+      return isRu
+        ? "Ваши задания находятся в разделе 'Задания'. Там указаны сроки и приоритеты."
+        : "Vazifalaringizni 'Vazifalar' bo'limida ko'rishingiz mumkin.";
+    }
+    if (lowerQ.includes('baho') || lowerQ.includes('ball') || lowerQ.includes('оценк') || lowerQ.includes('grade')) {
+      return isRu
+        ? "Оценки смотрите в разделе 'Посещаемость'. Там есть баллы, GPA и NB."
+        : "Baholaringizni 'Baholar' sahifasida ko'rishingiz mumkin.";
+    }
+    
+    return isRu
+      ? "Уточните, пожалуйста, тему: расписание, задания, оценки или LMS синхронизация. 😊"
+      : "Darslar, vazifalar, baholar yoki LMS integratsiyasi haqida aniqroq savol bering! 😊";
   };
+
+  const fmtTime = (date) => formatTime(date, lang);
+
+  const canSend = input.trim() && !loading;
 
   return (
     <div className="flex-column" style={{ height: 'calc(100vh - 140px)' }}>
       {/* Header */}
-      <div className="glass-panel p-4 mb-4" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(236,72,153,0.2) 100%)', border: '1px solid rgba(99,102,241,0.3)' }}>
+      <div className="glass-panel p-4 mb-3" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(236,72,153,0.2) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px' }}>
         <div className="flex-center gap-3" style={{ justifyContent: 'flex-start' }}>
-          <div style={{ background: 'var(--accent-gradient)', padding: '12px', borderRadius: '50%', boxShadow: '0 4px 20px rgba(99,102,241,0.4)' }}>
-            <Sparkles size={24} color="white" />
+          <div style={{ background: 'var(--accent-gradient)', padding: '10px', borderRadius: '50%', boxShadow: '0 4px 20px rgba(99,102,241,0.4)' }}>
+            <Sparkles size={22} color="white" />
           </div>
           <div>
-            <h1 className="text-gradient" style={{ fontSize: '22px', marginBottom: '2px' }}>{t('ai.title')}</h1>
+            <h1 className="text-gradient" style={{ fontSize: '20px', marginBottom: '2px' }}>{t('ai.title')}</h1>
             <p className="text-secondary text-xs">{t('ai.subtitle')}</p>
           </div>
         </div>
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto mb-4 px-1" style={{ scrollBehavior: 'smooth' }}>
+      <div className="flex-1 hide-scrollbar" style={{ overflowY: 'auto', paddingRight: '2px', marginBottom: '12px' }}>
         {messages.map((msg) => (
-          <div 
-            key={msg.id} 
-            className={`flex gap-3 mb-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-            style={{ animation: 'fadeIn 0.3s ease-out' }}
+          <div
+            key={msg.id}
+            style={{
+              display: 'flex',
+              gap: '10px',
+              marginBottom: '12px',
+              flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+              animation: 'fadeIn 0.25s ease-out'
+            }}
           >
-            <div 
-              className="flex-center" 
-              style={{ 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '50%', 
+            <div
+              className="flex-center"
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
                 background: msg.role === 'assistant' ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.1)',
                 flexShrink: 0,
+                alignSelf: 'flex-end',
                 boxShadow: msg.role === 'assistant' ? '0 4px 15px rgba(99,102,241,0.3)' : 'none'
               }}
             >
-              {msg.role === 'assistant' ? <Bot size={20} color="white" /> : <User size={20} color="white" />}
+              {msg.role === 'assistant' ? <Bot size={18} color="white" /> : <User size={18} color="white" />}
             </div>
-            
-            <div 
-              className="glass-panel p-3" 
-              style={{ 
-                maxWidth: '75%',
-                background: msg.role === 'assistant' 
-                  ? 'rgba(99,102,241,0.1)' 
-                  : 'rgba(236,72,153,0.1)',
-                border: msg.role === 'assistant'
-                  ? '1px solid rgba(99,102,241,0.2)'
-                  : '1px solid rgba(236,72,153,0.2)',
-                borderRadius: msg.role === 'assistant' ? '0 12px 12px 12px' : '12px 0 12px 12px'
-              }}
-            >
-              <p className="text-sm" style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{msg.content}</p>
-              <p className="text-xs text-secondary mt-2" style={{ opacity: 0.6 }}>{formatTime(msg.timestamp)}</p>
+
+            <div style={{ maxWidth: '78%' }}>
+              <div
+                style={{
+                  padding: '10px 14px',
+                  background: msg.role === 'assistant' ? 'rgba(99,102,241,0.12)' : 'rgba(168,85,247,0.18)',
+                  border: msg.role === 'assistant' ? '1px solid rgba(99,102,241,0.2)' : '1px solid rgba(168,85,247,0.3)',
+                  borderRadius: msg.role === 'assistant' ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
+                }}
+              >
+                <p className="text-sm" style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'white' }}>{msg.content}</p>
+              </div>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)', marginTop: '4px', textAlign: msg.role === 'user' ? 'right' : 'left', paddingLeft: msg.role === 'assistant' ? '4px' : 0, paddingRight: msg.role === 'user' ? '4px' : 0 }}>
+                {fmtTime(msg.timestamp)}
+              </p>
             </div>
           </div>
         ))}
-        
+
         {loading && (
-          <div className="flex gap-3 mb-4">
-            <div 
-              className="flex-center" 
-              style={{ 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '50%', 
-                background: 'var(--accent-gradient)',
-                flexShrink: 0
-              }}
-            >
-              <Bot size={20} color="white" />
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+            <div className="flex-center" style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'var(--accent-gradient)', flexShrink: 0, alignSelf: 'flex-end' }}>
+              <Bot size={18} color="white" />
             </div>
-            <div className="glass-panel p-3" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-              <div className="flex-center gap-2">
-                <Loader size={16} className="animate-spin" color="var(--accent-primary)" />
-                <span className="text-sm text-secondary">{t('ai.loading')}</span>
+            <div style={{ padding: '10px 16px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '4px 16px 16px 16px' }}>
+              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1.2s infinite 0s' }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1.2s infinite 0.2s' }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1.2s infinite 0.4s' }} />
               </div>
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="glass-panel p-3" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)' }}>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={t('ai.inputPlaceholder')}
-            className="tg-input"
-            disabled={loading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || loading}
-            className="flex-center"
-            style={{
-              background: input.trim() && !loading ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.1)',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-              transition: 'all 0.2s',
-              boxShadow: input.trim() && !loading ? '0 4px 15px rgba(99,102,241,0.4)' : 'none'
-            }}
-          >
-            <Send size={20} color="white" />
-          </button>
-        </div>
+      {/* Telegram-style Input Area */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: '10px',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '24px',
+        padding: '8px 8px 8px 16px',
+      }}>
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={lang === 'ru' ? 'Написать сообщение...' : 'Xabar yozing...'}
+          disabled={loading}
+          rows={1}
+          style={{
+            flex: 1,
+            background: 'none',
+            border: 'none',
+            color: 'white',
+            fontSize: '15px',
+            lineHeight: '1.5',
+            outline: 'none',
+            resize: 'none',
+            fontFamily: 'inherit',
+            padding: '6px 0',
+            maxHeight: '120px',
+            overflowY: 'auto',
+          }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={!canSend}
+          style={{
+            width: '40px',
+            height: '40px',
+            flexShrink: 0,
+            background: canSend ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.06)',
+            border: 'none',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: canSend ? 'pointer' : 'not-allowed',
+            transition: 'all 0.2s',
+            boxShadow: canSend ? '0 4px 15px rgba(99,102,241,0.4)' : 'none',
+            transform: canSend ? 'scale(1)' : 'scale(0.95)'
+          }}
+        >
+          <Send size={18} color={canSend ? 'white' : 'rgba(255,255,255,0.3)'} style={{ marginLeft: '2px' }} />
+        </button>
       </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-6px); }
+        }
+      `}</style>
     </div>
   );
 }

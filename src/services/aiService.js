@@ -21,13 +21,15 @@ const extractReplyText = (data) => {
 };
 
 export const aiService = {
-  async getReply({ conversation, userName }) {
+  async getReply({ conversation, userName, userLang }) {
     const apiKey = import.meta.env.VITE_AI_API_KEY;
 
     if (!apiKey) {
       return {
         success: false,
-        error: 'AI token topilmadi. .env.local faylida VITE_AI_API_KEY bo\'lishi kerak.'
+        error: userLang === 'ru'
+          ? 'AI ключ не найден. Добавьте VITE_AI_API_KEY в .env.local'
+          : 'AI token topilmadi. .env.local faylida VITE_AI_API_KEY bo\'lishi kerak.'
       };
     }
 
@@ -45,9 +47,13 @@ export const aiService = {
             {
               role: 'system',
               content: [
-                'You are an academic assistant for a timetable app used by university students.',
+                'You are an academic assistant for a university timetable app.',
                 `The current user name is: ${userName || 'Talaba'}.`,
-                'Always answer in Uzbek language (latin script).',
+                'CRITICAL: Detect the language of each user message and ALWAYS reply in exactly the same language.',
+                'If user writes in Uzbek (latin or cyrillic), reply in Uzbek.',
+                'If user writes in Russian, reply in Russian.',
+                'If user writes in English, reply in English.',
+                'Never mix languages in your response.',
                 'Be concise, practical, and supportive.',
                 'When needed, suggest checking timetable, tasks, grades, library, or LMS sync sections in the app.'
               ].join(' ')

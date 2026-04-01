@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Search, Star, MessageSquare, X, Send, Crown, PenLine, ChevronLeft } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '../utils/dateUtils';
 
 export default function Teachers({ user }) {
   const navigate = useNavigate();
@@ -270,7 +271,7 @@ export default function Teachers({ user }) {
                         </div>
                       </div>
                       <p className="text-sm" style={{ lineHeight: '1.5', color: 'rgba(255,255,255,0.9)' }}>{review.text}</p>
-                      <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>{new Date(review.date).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>{formatDateTime(review.date)}</p>
                     </div>
                   ))}
                 </div>

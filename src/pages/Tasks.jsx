@@ -3,6 +3,7 @@ import { Clock, ExternalLink, RefreshCw, ChevronRight, BookOpenCheck } from 'luc
 import { lmsService } from '../services/lmsService';
 import { getJson } from '../services/storageService';
 import { useI18n } from '../i18n';
+import { formatDateFull } from '../utils/dateUtils';
 
 const categoryTabs = ['all', 'homework', 'lab', 'coursework', 'midterm'];
 
@@ -15,15 +16,7 @@ const categoryToCanonical = (label = '') => {
   return 'homework';
 };
 
-const formatDateTime = (iso, lang) => {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '--';
-  const locale = lang === 'ru' ? 'ru-RU' : 'uz-UZ';
-  return `${date.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString(locale, {
-    hour: '2-digit',
-    minute: '2-digit'
-  })}`;
-};
+const formatDateTime = (iso, lang) => formatDateFull(iso, lang);
 
 const countdownLabel = (iso, t) => {
   const target = new Date(iso).getTime();

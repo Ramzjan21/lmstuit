@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle, RefreshCw, TrendingUp, TrendingDown } from 
 import { lmsService } from '../services/lmsService';
 import { getJson, setJson } from '../services/storageService';
 import { useI18n } from '../i18n';
+import { formatTime } from '../utils/dateUtils';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -216,7 +217,7 @@ export default function Grades({ user }) {
 
       <p className="text-secondary text-sm mb-1">{t('grades.subtitle')}</p>
       <p className="text-xs text-secondary mb-1">{t('grades.activeSemester')}: {studyPlan?.activeSemester || t('common.unknown')}</p>
-      <p className="text-xs text-secondary mb-4">{t('grades.lastLiveSync')}: {lastRealtimeSync ? new Date(lastRealtimeSync).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'uz-UZ') : '--:--'}</p>
+      <p className="text-xs text-secondary mb-4">{t('grades.lastLiveSync')}: {lastRealtimeSync ? formatTime(lastRealtimeSync, lang) : '--:--'}</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '14px' }}>
         <div className="glass-panel p-3" style={{ background: 'rgba(99,102,241,0.12)' }}>

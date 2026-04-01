@@ -20,20 +20,13 @@ import { useNavigate } from 'react-router-dom';
 import { lmsService } from '../services/lmsService';
 import { getJson } from '../services/storageService';
 import { useI18n } from '../i18n';
+import { formatDate, formatTime } from '../utils/dateUtils';
 
 const DAYS_UZ = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
 
-const toDateText = (value, lang) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '--';
-  return date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { day: '2-digit', month: 'short' });
-};
+const toDateText = (value, lang) => formatDate(value, lang);
+const toTimeText = (value, lang) => formatTime(value, lang);
 
-const toTimeText = (value, lang) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '--:--';
-  return date.toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { hour: '2-digit', minute: '2-digit' });
-};
 
 const countdown = (iso, t) => {
   const target = new Date(iso).getTime();
