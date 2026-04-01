@@ -397,7 +397,8 @@ app.post('/api/leaderboard', requireSession, async (req, res) => {
   try {
     const { userEmail, ...data } = req.body;
     const loginEmail = req.session.lmsUser?.login;
-    if (!loginEmail || loginEmail !== userEmail) {
+    const normalizedLogin = loginEmail?.startsWith('lms_') ? loginEmail : `lms_${loginEmail}`;
+    if (!normalizedLogin || normalizedLogin !== userEmail) {
        return res.status(403).json({ error: 'Faqat o`z hisobingizni yangilashingiz mumkin' });
     }
 
