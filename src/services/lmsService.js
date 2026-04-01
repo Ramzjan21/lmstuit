@@ -121,10 +121,13 @@ const updateLeaderboard = async ({ userEmail, profile, grades }) => {
   await setJson('leaderboard_users', updated.slice(0, 200));
 
   try {
+    const sessionId = getSessionId();
+    const headers = { 'Content-Type': 'application/json' };
+    if (sessionId) headers['x-session-id'] = sessionId;
     await fetch('/api/leaderboard', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(entry)
     });
   } catch (e) {
@@ -328,10 +331,13 @@ export const lmsService = {
 
     // Trigger Telegram NB notification check silently
     try {
+      const sessionId = getSessionId();
+      const headers = { 'Content-Type': 'application/json' };
+      if (sessionId) headers['x-session-id'] = sessionId;
       await fetch('/api/telegram/check-nb', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ grades })
       });
     } catch (e) {
