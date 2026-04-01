@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+// BOT_TOKEN is read inside initBot() so dotenv has already loaded by then
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'lmstuit1kbot';
 
 let bot = null;
@@ -15,21 +15,22 @@ const nbState = new Map();
 const pendingLinks = new Map();
 
 export const initBot = (serverBaseUrl) => {
-  if (!BOT_TOKEN) {
+  // Read AFTER dotenv has been loaded by index.mjs
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
     console.warn('[TG-BOT] TELEGRAM_BOT_TOKEN topilmadi - bot ishga tushmadi');
     return null;
   }
 
-  // On local dev, run without polling to avoid 409 conflict with Render instance.
-  // Set ENABLE_TG_POLLING=true in .env.local only if you want polling locally.
+  // Only poll on Render (production) to prevent 409 conflicts with local dev.
   const isProduction = process.env.NODE_ENV === 'production';
   const forcePolling = process.env.ENABLE_TG_POLLING === 'true';
   const usePolling = isProduction || forcePolling;
 
-  bot = new TelegramBot(BOT_TOKEN, { polling: usePolling });
+  bot = new TelegramBot(token, { polling: usePolling });
 
   if (!usePolling) {
-    console.log('[TG-BOT] Bot xabar yuborish rejimida (polling o\'chiq - lokal dev)');
+    console.log('[TG-BOT] Bot tayyor (xabar yuborish rejimi, polling o\'chiq - lokal dev)');
     return bot;
   }
 
@@ -77,6 +78,8 @@ export const initBot = (serverBaseUrl) => {
   });
 
   bot.on('polling_error', (err) => {
+    // Silently ignore 409 conflict (happens when 2 instances run at once)
+    if (err.message && err.message.includes('409')) return;
     console.error('[TG-BOT] Polling xatosi:', err.message);
   });
 
