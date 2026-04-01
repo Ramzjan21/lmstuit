@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -21,6 +21,27 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState('uz');
+  const autoSyncRef = useRef(null);
+
+  const AUTO_SYNC_INTERVAL = 30 * 60 * 1000; // 30 daqiqa
+
+  const startAutoSync = (userData) => {
+    if (!userData?.isLms || !userData?.email) return;
+    stopAutoSync();
+    // Sync immediately on start
+    lmsService.syncAll(userData.email).catch(console.warn);
+    // Then every 30 min
+    autoSyncRef.current = setInterval(() => {
+      lmsService.syncAll(userData.email).catch(console.warn);
+    }, AUTO_SYNC_INTERVAL);
+  };
+
+  const stopAutoSync = () => {
+    if (autoSyncRef.current) {
+      clearInterval(autoSyncRef.current);
+      autoSyncRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
@@ -44,6 +65,13 @@ function App() {
     loadUser();
   }, []);
 
+  // Start auto-sync when user changes
+  useEffect(() => {
+    if (user) startAutoSync(user);
+    else stopAutoSync();
+    return () => stopAutoSync();
+  }, [user?.email]);
+
   const handleLogin = async (userData) => {
     setUser(userData);
     await setJson('currentUser', userData);
@@ -52,6 +80,8 @@ function App() {
     const detected = detectLanguageFromProfile(profile);
     setLang(detected);
     await setJson(`lang_${userData.email}`, detected);
+    // Start auto-sync right after login
+    startAutoSync(userData);
   };
 
   const handleLogout = async () => {

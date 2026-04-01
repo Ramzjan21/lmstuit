@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock, ExternalLink, RefreshCw, ChevronRight, BookOpenCheck } from 'lucide-react';
+import { Clock, Download, RefreshCw, ChevronRight, BookOpenCheck, BotMessageSquare, Send } from 'lucide-react';
 import { lmsService } from '../services/lmsService';
 import { getJson } from '../services/storageService';
 import { useI18n } from '../i18n';
@@ -72,8 +72,36 @@ export default function Tasks({ user }) {
   const [subjectFilter, setSubjectFilter] = useState(t('tasks.categories.all'));
   const [syncing, setSyncing] = useState(false);
   const [openSubject, setOpenSubject] = useState('');
+  const [remindedTasks, setRemindedTasks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('reminded_tasks') || '{}'); } catch { return {}; }
+  });
 
   const allLabel = t('tasks.categories.all');
+
+  const downloadTaskFile = async (task) => {
+    if (!task.link) return;
+    try {
+      // Open LMS link to download
+      window.open(task.link, '_blank');
+    } catch(e) {}
+  };
+
+  const sendToTelegram = async (task) => {
+    try {
+      await fetch('/api/telegram/remind-task', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task })
+      });
+      const updated = { ...remindedTasks, [task.id]: true };
+      setRemindedTasks(updated);
+      localStorage.setItem('reminded_tasks', JSON.stringify(updated));
+      alert(task.title + ' uchun Telegram eslatmasi yoqildi!');
+    } catch(e) {
+      console.error('Telegram remind error:', e);
+    }
+  };
 
   const loadData = async () => {
     if (!user) return;
@@ -310,17 +338,29 @@ export default function Tasks({ user }) {
                             <Clock size={12} /> {t('tasks.deadline')}: {formatDateTime(task.deadline, lang)}
                           </p>
 
-                          {!!task.link && (
-                            <a
-                              href={task.link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs mt-2 flex-center"
-                              style={{ justifyContent: 'flex-start', gap: '6px', color: 'var(--info)', textDecoration: 'none' }}
-                            >
-                              <ExternalLink size={12} /> {t('tasks.openLms')}
-                            </a>
-                          )}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                            {!!task.link && (
+                              <button
+                                onClick={() => downloadTaskFile(task)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,209,255,0.12)', border: '1px solid rgba(0,209,255,0.2)', borderRadius: '8px', padding: '6px 10px', color: 'var(--info)', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
+                              >
+                                <Download size={12} /> {t('tasks.openLms')}
+                              </button>
+                            )}
+                            {!remindedTasks[task.id] && !task.completed && task.deadline && new Date(task.deadline) > new Date() && (
+                              <button
+                                onClick={() => sendToTelegram(task)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,136,204,0.12)', border: '1px solid rgba(0,136,204,0.2)', borderRadius: '8px', padding: '6px 10px', color: '#0088cc', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
+                              >
+                                <BotMessageSquare size={12} /> Eslatma
+                              </button>
+                            )}
+                            {remindedTasks[task.id] && (
+                              <span style={{ fontSize: '11px', color: '#0088cc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Send size={11} /> Telegram eslatmasi faol
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
