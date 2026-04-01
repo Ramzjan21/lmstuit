@@ -2,14 +2,35 @@ import { getJson, removeKey, setJson } from './storageService';
 
 const DEFAULT_PROXY_BASE = import.meta.env.VITE_LMS_PROXY_URL || '/api/lms';
 
+const getSessionId = () => {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem('lms_session_id'); } catch { return null; }
+};
+
+const setSessionId = (sid) => {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem('lms_session_id', sid); } catch {}
+};
+
+const clearSessionId = () => {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem('lms_session_id'); } catch {}
+};
+
 const requestJson = async (path, options = {}) => {
+  const sessionId = getSessionId();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  if (sessionId) {
+    headers['x-session-id'] = sessionId;
+  }
+
   const response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
     credentials: 'include',
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
+    headers
   });
 
   const body = await response.json().catch(() => ({}));
@@ -118,6 +139,10 @@ export const lmsService = {
         method: 'POST',
         body: JSON.stringify({ login, password })
       });
+
+      if (data?.sessionId) {
+        setSessionId(data.sessionId);
+      }
 
       await setJson('lms_user', { login, name: data?.name || login });
       return { success: true, name: data?.name || login };
@@ -327,12 +352,20 @@ export const lmsService = {
   },
 
   async logout() {
+    const sessionId = getSessionId();
     try {
-      await requestJson('/logout', { method: 'POST' });
+      const headers = { 'Content-Type': 'application/json' };
+      if (sessionId) headers['x-session-id'] = sessionId;
+      await fetch(`${DEFAULT_PROXY_BASE}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers
+      });
     } catch (error) {
       console.warn('LMS logout warning:', error.message);
     }
 
+    clearSessionId();
     await removeKey('lms_user');
     clearBundleCache();
   }

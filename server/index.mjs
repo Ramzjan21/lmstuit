@@ -1,5 +1,4 @@
 import express from 'express';
-import session from 'express-session';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,22 +23,31 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'telegram-webapp-lms-dev-se
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
-const isProd = process.env.NODE_ENV === 'production';
+const sessions = new Map();
 
-app.use(
-  session({
-    name: 'lms_webapp_sid',
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: false,
-      sameSite: isProd ? 'none' : 'lax',
-      secure: isProd,
-      maxAge: 1000 * 60 * 60 * 24 * 365  // 1 yil
+const generateSessionId = () => {
+  return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+const getSession = (req) => {
+  const sid = req.headers['x-session-id'];
+  if (sid && sessions.has(sid)) {
+    const session = sessions.get(sid);
+    if (Date.now() - session.lastAccess < 365 * 24 * 60 * 60 * 1000) {
+      session.lastAccess = Date.now();
+      return session;
     }
-  })
-);
+    sessions.delete(sid);
+  }
+  return null;
+};
+
+const createSession = (data) => {
+  const sid = generateSessionId();
+  const session = { ...data, lastAccess: Date.now() };
+  sessions.set(sid, session);
+  return { sid, session };
+};
 
 const sendError = (res, error) => {
   const status = Number(error?.status || 500);
@@ -48,9 +56,11 @@ const sendError = (res, error) => {
 };
 
 const requireSession = (req, res, next) => {
-  if (!req.session?.lmsCookie) {
+  const session = getSession(req);
+  if (!session?.lmsCookie) {
     return res.status(401).json({ error: 'Session topilmadi. Qayta login qiling.' });
   }
+  req.session = session;
   return next();
 };
 
@@ -68,23 +78,21 @@ app.post('/api/lms/login', async (req, res) => {
     }
 
     const auth = await loginLms(login, password);
-    req.session.lmsCookie = auth.cookie;
-    req.session.lmsUser = {
-      login,
-      name: auth.name
-    };
+    const { sid, session } = createSession({
+      lmsCookie: auth.cookie,
+      lmsUser: { login, name: auth.name }
+    });
 
-    return res.json({ ok: true, name: auth.name });
+    return res.json({ ok: true, name: auth.name, sessionId: sid });
   } catch (error) {
     return sendError(res, error);
   }
 });
 
 app.post('/api/lms/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('lms_webapp_sid');
-    res.json({ ok: true });
-  });
+  const sid = req.headers['x-session-id'];
+  if (sid) sessions.delete(sid);
+  res.json({ ok: true });
 });
 
 app.get('/api/lms/profile', requireSession, async (req, res) => {
@@ -348,11 +356,10 @@ app.post('/api/teachers/:id/reviews', requireSession, async (req, res) => {
       const reviews = await Review.find({ teacherId: id }).sort({ date: -1 }).lean();
       return res.json({ ok: true, reviews });
     } else {
-      // Local fallback
       const reviewsMap = getReviewsLocal();
       if (!reviewsMap[id]) reviewsMap[id] = [];
       const localReview = { ...newReview };
-      delete localReview.teacherId; // keep original format
+      delete localReview.teacherId;
       reviewsMap[id].push(localReview);
       saveReviewsLocal(reviewsMap);
       return res.json({ ok: true, reviews: reviewsMap[id] });
