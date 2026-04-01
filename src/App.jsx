@@ -13,6 +13,7 @@ import Teachers from './pages/Teachers';
 import Freelance from './pages/Freelance';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import LoadingScreen from './components/LoadingScreen';
 import { getJson, removeKey, setJson } from './services/storageService';
 import { lmsService } from './services/lmsService';
 import { I18nContext, detectLanguageFromProfile, translate } from './i18n';
@@ -134,7 +135,7 @@ function App() {
   };
 
   if (loading) {
-    return <div className="flex-center" style={{ height: '100vh', background: 'var(--bg-main)', color: 'white' }}>{translate(lang, 'app.loading')}</div>;
+    return <LoadingScreen />;
   }
 
   const t = (key, params) => translate(lang, key, params);

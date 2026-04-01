@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { KeyRound, Lock, LogIn, ShieldCheck, TerminalSquare } from 'lucide-react';
 import { lmsService } from '../services/lmsService';
 import { useI18n } from '../i18n';
+import { detectLanguageFromProfile } from '../i18n';
 
 const getTelegramUser = () => {
   if (typeof window === 'undefined') return null;
@@ -52,13 +53,17 @@ export default function Login({ onLogin }) {
       return;
     }
 
+    const profile = await lmsService.syncProfile();
+    const detectedLang = detectLanguageFromProfile(profile);
+
     const userData = {
       name: auth.name || tgUser?.first_name || login,
       email: userEmail,
       isLms: true,
       lmsLogin: login,
       telegramId: tgUser?.id || null,
-      telegramUsername: tgUser?.username || ''
+      telegramUsername: tgUser?.username || '',
+      lang: detectedLang
     };
 
     onLogin(userData);
