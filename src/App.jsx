@@ -17,6 +17,11 @@ import { getJson, removeKey, setJson } from './services/storageService';
 import { lmsService } from './services/lmsService';
 import { I18nContext, detectLanguageFromProfile, translate } from './i18n';
 
+const getSessionId = () => {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem('lms_session_id'); } catch { return null; }
+};
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +52,8 @@ function App() {
     const loadUser = async () => {
       try {
         const storedUser = await getJson('currentUser', null);
-        if (storedUser) {
+        const sessionId = getSessionId();
+        if (storedUser && sessionId) {
           setUser(storedUser);
           const storedLang = await getJson(`lang_${storedUser.email}`, null);
           if (storedLang === 'ru' || storedLang === 'uz') {
@@ -56,6 +62,18 @@ function App() {
             const profile = await getJson(`profile_${storedUser.email}`, null);
             setLang(detectLanguageFromProfile(profile));
           }
+        } else if (storedUser && !sessionId) {
+          console.warn('[App] Eski user topildi lekin sessionId yo\'q - logout qilinmoqda');
+          await removeKey('currentUser');
+          await removeKey(`lang_${storedUser.email}`);
+          await removeKey(`profile_${storedUser.email}`);
+          await removeKey(`timetable_${storedUser.email}`);
+          await removeKey(`tasks_${storedUser.email}`);
+          await removeKey(`grades_${storedUser.email}`);
+          await removeKey(`studyplan_${storedUser.email}`);
+          await removeKey(`finals_${storedUser.email}`);
+          await removeKey(`lms_last_sync_${storedUser.email}`);
+          await removeKey(`courses_${storedUser.email}`);
         }
       } catch (e) {
         console.error("Local storage read error", e);
@@ -88,10 +106,17 @@ function App() {
     await lmsService.logout();
     if (user?.email) {
       await removeKey(`lang_${user.email}`);
+      await removeKey(`profile_${user.email}`);
+      await removeKey(`timetable_${user.email}`);
+      await removeKey(`tasks_${user.email}`);
+      await removeKey(`grades_${user.email}`);
+      await removeKey(`studyplan_${user.email}`);
+      await removeKey(`finals_${user.email}`);
+      await removeKey(`lms_last_sync_${user.email}`);
+      await removeKey(`courses_${user.email}`);
     }
     setUser(null);
     await removeKey('currentUser');
-    await removeKey('lms_user');
     setLang('uz');
   };
 
