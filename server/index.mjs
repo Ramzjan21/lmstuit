@@ -557,13 +557,6 @@ app.post('/api/freelancers/:id/reviews', async (req, res) => {
   }
 });
 
-if (fs.existsSync(distDir)) {
-  app.use(express.static(distDir));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distDir, 'index.html'));
-  });
-}
-
 // ─── TELEGRAM BOT API ────────────────────────────────────────────────────────
 
 // Link user's Telegram chat ID to their account
@@ -666,6 +659,14 @@ app.delete('/api/telegram/remind-task/:taskId', requireSession, async (req, res)
     res.json({ ok: true });
   } catch (err) { sendError(res, err); }
 });
+
+// ─── STATIC FILES & SPA FALLBACK ────────────────────────────────────────────
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`[lms-proxy] running on http://localhost:${PORT}`);
