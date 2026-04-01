@@ -24,6 +24,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'telegram-webapp-lms-dev-se
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
+const isProd = process.env.NODE_ENV === 'production';
+
 app.use(
   session({
     name: 'lms_webapp_sid',
@@ -31,9 +33,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false,
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd,
       maxAge: 1000 * 60 * 60 * 24 * 365  // 1 yil
     }
   })
