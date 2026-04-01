@@ -19,6 +19,7 @@ const clearSessionId = () => {
 
 const requestJson = async (path, options = {}) => {
   const sessionId = getSessionId();
+  console.log('[lmsService] requestJson:', path, 'sessionId:', sessionId ? '✅ bor' : '❌ yo\'q');
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {})
@@ -143,8 +144,12 @@ export const lmsService = {
         body: JSON.stringify({ login, password })
       });
 
+      console.log('[lmsService] login response:', JSON.stringify(data));
       if (data?.sessionId) {
         setSessionId(data.sessionId);
+        console.log('[lmsService] sessionId saqlandi:', data.sessionId);
+      } else {
+        console.warn('[lmsService] login response da sessionId yo\'q!');
       }
 
       await setJson('lms_user', { login, name: data?.name || login });
