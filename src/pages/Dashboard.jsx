@@ -31,9 +31,7 @@ const toTimeText = (value, lang) => formatTime(value, lang);
 const countdown = (iso, t) => {
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return t('tasks.noTime');
-  const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' });
-  const nowMs = new Date(now).getTime();
-  const diff = target - nowMs;
+  const diff = target - Date.now();
   if (diff <= 0) return t('tasks.expired');
   const minutes = Math.floor(diff / (1000 * 60));
   if (minutes < 60) return t('tasks.leftMinutes', { value: minutes });

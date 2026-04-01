@@ -98,11 +98,24 @@ function App() {
   }, [user?.email]);
 
   const handleLogin = async (userData) => {
-    const detectedLang = userData.lang || 'uz';
     setUser(userData);
     await setJson('currentUser', userData);
-    setLang(detectedLang);
-    await setJson(`lang_${userData.email}`, detectedLang);
+
+    try {
+      const profile = await getJson(`profile_${userData.email}`, null);
+      if (profile) {
+        const detectedLang = detectLanguageFromProfile(profile);
+        setLang(detectedLang);
+        await setJson(`lang_${userData.email}`, detectedLang);
+      } else {
+        const detectedLang = userData.lang || 'uz';
+        setLang(detectedLang);
+        await setJson(`lang_${userData.email}`, detectedLang);
+      }
+    } catch(e) {
+      console.warn('Lang detect error:', e);
+    }
+    
     startAutoSync(userData);
   };
 
@@ -132,7 +145,7 @@ function App() {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen lang={lang} />;
   }
 
   const t = (key, params) => translate(lang, key, params);

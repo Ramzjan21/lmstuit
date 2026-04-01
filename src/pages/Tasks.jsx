@@ -3,7 +3,7 @@ import { Clock, Download, RefreshCw, ChevronRight, BookOpenCheck, BotMessageSqua
 import { lmsService } from '../services/lmsService';
 import { getJson } from '../services/storageService';
 import { useI18n } from '../i18n';
-import { formatDateFull } from '../utils/dateUtils';
+import { formatDateTime } from '../utils/dateUtils';
 
 const categoryTabs = ['all', 'homework', 'lab', 'coursework', 'midterm'];
 
@@ -16,15 +16,11 @@ const categoryToCanonical = (label = '') => {
   return 'homework';
 };
 
-const formatDateTime = (iso, lang) => formatDateFull(iso, lang);
-
 const countdownLabel = (iso, t) => {
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return t('tasks.noTime');
 
-  const nowTashkent = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' });
-  const nowMs = new Date(nowTashkent).getTime();
-  const diff = target - nowMs;
+  const diff = target - Date.now();
   if (diff <= 0) return t('tasks.expired');
 
   const minutes = Math.floor(diff / (1000 * 60));
