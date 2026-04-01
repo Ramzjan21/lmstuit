@@ -25,7 +25,15 @@ export default function Login({ onLogin }) {
     setLoading(true);
     setLoadingText(t('login.connecting'));
 
-    const auth = await lmsService.login(login, password);
+    let auth;
+    try {
+      auth = await lmsService.login(login, password);
+    } catch (error) {
+      setLoading(false);
+      console.error('Login xatosi:', error);
+      alert(t('login.loginError') || 'Login jarayonida xatolik yuz berdi. Qayta urinib ko\'ring.');
+      return;
+    }
     if (!auth.success) {
       setLoading(false);
       alert(auth.error || t('login.errorGeneric'));
@@ -34,7 +42,15 @@ export default function Login({ onLogin }) {
 
     const userEmail = `lms_${login}`;
     setLoadingText(t('login.syncing'));
-    await lmsService.syncAll(userEmail);
+
+    try {
+      await lmsService.syncAll(userEmail);
+    } catch (syncError) {
+      setLoading(false);
+      console.error('Sync xatosi:', syncError);
+      alert(t('login.syncError') || 'Sinxronizatsiyada xatolik yuz berdi. Qayta urinib ko\'ring.');
+      return;
+    }
 
     const userData = {
       name: auth.name || tgUser?.first_name || login,

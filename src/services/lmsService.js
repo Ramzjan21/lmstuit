@@ -257,7 +257,13 @@ export const lmsService = {
 
   async syncAll(userEmail) {
     clearBundleCache();
-    const data = await requestJson('/sync-all');
+    let data;
+    try {
+      data = await requestJson('/sync-all');
+    } catch (error) {
+      console.error('syncAll /sync-all xatosi:', error);
+      throw new Error('Sinxronizatsiya muvaffaqiyatsiz: ' + error.message);
+    }
     cachedBundle = data;
     cachedAt = Date.now();
 

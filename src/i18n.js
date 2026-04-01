@@ -31,6 +31,9 @@ const messages = {
       syncing: 'Talaba ma`lumotlari sinxronlanmoqda...',
       loadingHint: 'TATU LMS dan aktual ma`lumotlar olinmoqda...',
       errorGeneric: 'Kirishda xatolik yuz berdi.',
+      syncError: "Sinxronizatsiyada xatolik yuz berdi. Qayta urinib ko'ring.",
+      loginError: "Login jarayonida xatolik yuz berdi. Qayta urinib ko'ring.",
+      loadingHint: 'TATU LMS dan aktual ma`lumotlar olinmoqda...',
       telegram: 'Telegram'
     },
     dashboard: {
@@ -211,6 +214,9 @@ const messages = {
       syncing: 'Синхронизация данных студента...',
       loadingHint: 'Получаем актуальные данные из TATU LMS...',
       errorGeneric: 'Ошибка входа.',
+      syncError: 'Ошибка синхронизации. Попробуйте еще раз.',
+      loginError: 'Ошибка входа. Попробуйте еще раз.',
+      loadingHint: 'Получаем актуальные данные из TATU LMS...',
       telegram: 'Telegram'
     },
     dashboard: {
