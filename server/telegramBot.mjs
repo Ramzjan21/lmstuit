@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'lmstuit_bot';
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'lmstuit1kbot';
 
 let bot = null;
 
