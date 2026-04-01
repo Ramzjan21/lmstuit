@@ -29,7 +29,14 @@ const generateSessionId = () => {
   return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
-const getSession = (req) => {
+const createSession = (data) => {
+  const sid = generateSessionId();
+  const session = { ...data, lastAccess: Date.now() };
+  sessions.set(sid, session);
+  return { sid, session };
+};
+
+const getSessionFromHeader = (req) => {
   const sid = req.headers['x-session-id'];
   if (sid && sessions.has(sid)) {
     const session = sessions.get(sid);
@@ -42,13 +49,6 @@ const getSession = (req) => {
   return null;
 };
 
-const createSession = (data) => {
-  const sid = generateSessionId();
-  const session = { ...data, lastAccess: Date.now() };
-  sessions.set(sid, session);
-  return { sid, session };
-};
-
 const sendError = (res, error) => {
   const status = Number(error?.status || 500);
   const message = error?.message || 'Server xatoligi';
@@ -56,7 +56,23 @@ const sendError = (res, error) => {
 };
 
 const requireSession = (req, res, next) => {
-  const session = getSession(req);
+  // 1. Try header-based session
+  let session = getSessionFromHeader(req);
+
+  // 2. If not found, try LMS cookie from header (persistent login)
+  if (!session?.lmsCookie) {
+    const lmsCookie = req.headers['x-lms-cookie'];
+    if (lmsCookie) {
+      const login = req.session?.lmsUser?.login || 'unknown';
+      const { sid, session: newSession } = createSession({
+        lmsCookie,
+        lmsUser: { login, name: login }
+      });
+      session = newSession;
+      req._newSessionId = sid;
+    }
+  }
+
   if (!session?.lmsCookie) {
     return res.status(401).json({ error: 'Session topilmadi. Qayta login qiling.' });
   }
@@ -83,7 +99,7 @@ app.post('/api/lms/login', async (req, res) => {
       lmsUser: { login, name: auth.name }
     });
 
-    return res.json({ ok: true, name: auth.name, sessionId: sid });
+    return res.json({ ok: true, name: auth.name, sessionId: sid, lmsCookie: auth.cookie });
   } catch (error) {
     return sendError(res, error);
   }

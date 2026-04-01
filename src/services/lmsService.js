@@ -2,6 +2,21 @@ import { getJson, removeKey, setJson } from './storageService';
 
 const DEFAULT_PROXY_BASE = import.meta.env.VITE_LMS_PROXY_URL || '/api/lms';
 
+const getLmsCookie = () => {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem('lms_cookie'); } catch { return null; }
+};
+
+const setLmsCookie = (cookie) => {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem('lms_cookie', cookie); } catch {}
+};
+
+const clearLmsCookie = () => {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem('lms_cookie'); } catch {}
+};
+
 const getSessionId = () => {
   if (typeof window === 'undefined') return null;
   try { return localStorage.getItem('lms_session_id'); } catch { return null; }
@@ -18,12 +33,16 @@ const clearSessionId = () => {
 };
 
 const requestJson = async (path, options = {}) => {
+  const lmsCookie = getLmsCookie();
   const sessionId = getSessionId();
-  console.log('[lmsService] requestJson:', path, 'sessionId:', sessionId ? '✅ bor' : '❌ yo\'q');
+  console.log('[lmsService] requestJson:', path, 'sessionId:', sessionId ? '✅' : '❌', 'lmsCookie:', lmsCookie ? '✅' : '❌');
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {})
   };
+  if (lmsCookie) {
+    headers['x-lms-cookie'] = lmsCookie;
+  }
   if (sessionId) {
     headers['x-session-id'] = sessionId;
   }
@@ -150,6 +169,10 @@ export const lmsService = {
         console.log('[lmsService] sessionId saqlandi:', data.sessionId);
       } else {
         console.warn('[lmsService] login response da sessionId yo\'q!');
+      }
+      if (data?.lmsCookie) {
+        setLmsCookie(data.lmsCookie);
+        console.log('[lmsService] lmsCookie saqlandi');
       }
 
       await setJson('lms_user', { login, name: data?.name || login });
@@ -377,6 +400,7 @@ export const lmsService = {
     }
 
     clearSessionId();
+    clearLmsCookie();
     await removeKey('lms_user');
     clearBundleCache();
   }

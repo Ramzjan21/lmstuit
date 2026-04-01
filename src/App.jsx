@@ -22,6 +22,11 @@ const getSessionId = () => {
   try { return localStorage.getItem('lms_session_id'); } catch { return null; }
 };
 
+const getLmsCookie = () => {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem('lms_cookie'); } catch { return null; }
+};
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +58,8 @@ function App() {
       try {
         const storedUser = await getJson('currentUser', null);
         const sessionId = getSessionId();
-        if (storedUser && sessionId) {
+        const lmsCookie = getLmsCookie();
+        if (storedUser && (sessionId || lmsCookie)) {
           setUser(storedUser);
           const storedLang = await getJson(`lang_${storedUser.email}`, null);
           if (storedLang === 'ru' || storedLang === 'uz') {
@@ -62,8 +68,8 @@ function App() {
             const profile = await getJson(`profile_${storedUser.email}`, null);
             setLang(detectLanguageFromProfile(profile));
           }
-        } else if (storedUser && !sessionId) {
-          console.warn('[App] Eski user topildi lekin sessionId yo\'q - logout qilinmoqda');
+        } else if (storedUser && !sessionId && !lmsCookie) {
+          console.warn('[App] Eski user topildi lekin session yo\'q - logout qilinmoqda');
           await removeKey('currentUser');
           await removeKey(`lang_${storedUser.email}`);
           await removeKey(`profile_${storedUser.email}`);
