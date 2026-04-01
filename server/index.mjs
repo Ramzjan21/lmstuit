@@ -5,7 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview } from './models.mjs';
+import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview, TelegramUser } from './models.mjs';
+import { initBot, checkAndNotifyNb, startTaskReminder, stopTaskReminder, sendMessage, registerLinkToken, consumeLinkToken, getBotUsername } from './telegramBot.mjs';
 import {
   fetchAcademicBundle,
   fetchCourses,
@@ -210,6 +211,28 @@ if (process.env.MONGODB_URI) {
     })
     .catch(err => console.error('[DB] MongoDB xatosi:', err));
 }
+
+initBot();
+
+// Handle bot /start with token — bot calls this internally via onText
+// This webhook is triggered by the bot's polling handler in telegramBot.mjs
+// when user sends /start <token>. We expose a helper for it:
+app.post('/api/telegram/confirm-link', async (req, res) => {
+  const { token, chatId } = req.body;
+  if (!token || !chatId) return res.status(400).json({ error: 'Kerakli maydon yo`q' });
+
+  const data = consumeLinkToken(token);
+  if (!data) return res.status(404).json({ error: 'Token topilmadi yoki muddati o`tgan' });
+
+  if (isMongoConnected) {
+    await TelegramUser.findOneAndUpdate(
+      { userEmail: data.userEmail },
+      { chatId: String(chatId), lang: data.lang || 'uz', linkedAt: new Date() },
+      { upsert: true, new: true }
+    );
+  }
+  res.json({ ok: true });
+});
 
 const getTeachersLocal = () => {
   try { return JSON.parse(fs.readFileSync(path.join(dataDir, 'teachers.json'), 'utf8')); } catch { return []; }
@@ -514,6 +537,109 @@ if (fs.existsSync(distDir)) {
     res.sendFile(path.join(distDir, 'index.html'));
   });
 }
+
+// ─── TELEGRAM BOT API ────────────────────────────────────────────────────────
+
+// Link user's Telegram chat ID to their account
+app.post('/api/telegram/link', requireSession, async (req, res) => {
+  try {
+    const { chatId, lang } = req.body;
+    if (!chatId) return res.status(400).json({ error: 'chatId majburiy' });
+    const userEmail = req.session.lmsUser?.login;
+    if (!userEmail) return res.status(401).json({ error: 'Session topilmadi' });
+
+    if (isMongoConnected) {
+      await TelegramUser.findOneAndUpdate(
+        { userEmail },
+        { chatId: String(chatId), lang: lang || 'uz', linkedAt: new Date() },
+        { upsert: true, new: true }
+      );
+    }
+
+    await sendMessage(chatId,
+      lang === 'ru'
+        ? '✅ Аккаунт успешно привязан!\n\nТеперь я буду уведомлять вас о:\n• Новых пропусках (НБ)\n• Дедлайнах заданий'
+        : '✅ Akkaunt muvaffaqiyatli ulandi!\n\nEndi sizga quyidagilar haqida xabar beraman:\n• Yangi NB lar\n• Topshiriq muddatlari'
+    );
+    res.json({ ok: true });
+  } catch (err) { sendError(res, err); }
+});
+
+// Get link status + bot URL for deep link
+app.get('/api/telegram/status', requireSession, async (req, res) => {
+  try {
+    const userEmail = req.session.lmsUser?.login;
+    if (!isMongoConnected) return res.json({ ok: true, linked: false });
+    const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    res.json({ ok: true, linked: !!tgUser, chatId: tgUser?.chatId || null });
+  } catch (err) { sendError(res, err); }
+});
+
+// Generate a deep-link token so user can auto-link by clicking Start in bot
+app.post('/api/telegram/generate-link', requireSession, async (req, res) => {
+  try {
+    const userEmail = req.session.lmsUser?.login;
+    const lang = req.body?.lang || 'uz';
+    if (!userEmail) return res.status(401).json({ error: 'Session topilmadi' });
+
+    const token = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    registerLinkToken(token, userEmail, lang);
+
+    const botName = getBotUsername();
+    const url = `https://t.me/${botName}?start=${token}`;
+    res.json({ ok: true, url, token });
+  } catch (err) { sendError(res, err); }
+});
+
+// Unlink
+app.delete('/api/telegram/unlink', requireSession, async (req, res) => {
+  try {
+    const userEmail = req.session.lmsUser?.login;
+    if (isMongoConnected) await TelegramUser.deleteOne({ userEmail });
+    res.json({ ok: true });
+  } catch (err) { sendError(res, err); }
+});
+
+// Called by frontend after every LMS sync to check for new NBs
+app.post('/api/telegram/check-nb', requireSession, async (req, res) => {
+  try {
+    const { grades } = req.body;
+    const userEmail = req.session.lmsUser?.login;
+    if (!Array.isArray(grades)) return res.status(400).json({ error: 'grades array kerak' });
+
+    if (!isMongoConnected) return res.json({ ok: false, reason: 'db_disconnected' });
+
+    const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    if (!tgUser || !tgUser.notifyNb) return res.json({ ok: true, skipped: true });
+
+    await checkAndNotifyNb(tgUser.chatId, userEmail, grades, tgUser.lang);
+    res.json({ ok: true });
+  } catch (err) { sendError(res, err); }
+});
+
+// Start task reminder (called when user views an upcoming task)
+app.post('/api/telegram/remind-task', requireSession, async (req, res) => {
+  try {
+    const { task } = req.body;
+    const userEmail = req.session.lmsUser?.login;
+    if (!task?.id || !task?.deadline) return res.status(400).json({ error: 'task.id va task.deadline kerak' });
+
+    if (!isMongoConnected) return res.json({ ok: false });
+    const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    if (!tgUser || !tgUser.notifyTasks) return res.json({ ok: true, skipped: true });
+
+    await startTaskReminder(tgUser.chatId, task, tgUser.lang);
+    res.json({ ok: true });
+  } catch (err) { sendError(res, err); }
+});
+
+// Stop task reminder (called when task is marked done or uploaded)
+app.delete('/api/telegram/remind-task/:taskId', requireSession, async (req, res) => {
+  try {
+    stopTaskReminder(req.params.taskId);
+    res.json({ ok: true });
+  } catch (err) { sendError(res, err); }
+});
 
 app.listen(PORT, () => {
   console.log(`[lms-proxy] running on http://localhost:${PORT}`);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, LogOut, Globe, Moon, Database, Trash2, Info, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n';
+import TelegramLink from '../components/TelegramLink';
 
 export default function Settings({ user, onLogout }) {
   const navigate = useNavigate();
@@ -106,6 +107,10 @@ export default function Settings({ user, onLogout }) {
           </div>
 
         </div>
+
+        {/* Telegram Bot */}
+        <p className="text-xs uppercase tracking-wider font-semibold mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Bildirishnomalar</p>
+        <TelegramLink user={user} />
 
         {/* Info */}
         <div className="glass-panel p-4" style={{ borderRadius: '16px', background: 'rgba(255,255,255,0.02)' }}>

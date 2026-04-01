@@ -1,5 +1,19 @@
 const DAY_NAMES = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
 
+// LMS returns datetimes WITHOUT timezone (e.g. "2026-04-05T08:00:00").
+// On Render/UTC servers this would be parsed as UTC, showing 5 hours early.
+// Fix: if no timezone marker is present, treat value as Tashkent (UTC+5).
+const TASHKENT_OFFSET_MS = 5 * 60 * 60 * 1000; // +05:00
+
+const parseEventDate = (value) => {
+  if (!value) return new Date(NaN);
+  const s = String(value).trim();
+  // Already has timezone info (Z, +05:00, etc.) — parse as-is
+  if (/[Zz]|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
+  // No timezone — LMS gives local Tashkent time, so append +05:00
+  return new Date(s + '+05:00');
+};
+
 const ENTITY_MAP = {
   amp: '&',
   lt: '<',
@@ -107,16 +121,16 @@ export const parseCalendarJson = (html = '') => {
   }
 };
 
-const timeText = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '--:--';
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mm = String(date.getMinutes()).padStart(2, '0');
+const timeText = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '--:--';
+  // Use UTC methods — date is already a proper UTC instant thanks to parseEventDate
+  const hh = String(date.getUTCHours()).padStart(2, '0');
+  const mm = String(date.getUTCMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
 };
 
-const buildTimeRange = (iso, duration = 80) => {
-  const start = new Date(iso);
+const buildTimeRange = (isoOrDate, duration = 80) => {
+  const start = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
   if (Number.isNaN(start.getTime())) return { startTime: '--:--', endTime: '--:--', time: '--:--' };
   const end = new Date(start.getTime() + duration * 60 * 1000);
   const startTime = timeText(start);
@@ -127,7 +141,7 @@ const buildTimeRange = (iso, duration = 80) => {
 export const parseScheduleEvents = (events = []) => {
   return events
     .map((event, index) => {
-      const startDate = new Date(event?.start);
+      const startDate = parseEventDate(event?.start);
       if (Number.isNaN(startDate.getTime())) return null;
 
       const lines = splitLines(event.title || '');
@@ -137,14 +151,17 @@ export const parseScheduleEvents = (events = []) => {
       const teacher = lines.find((line, i) => i > 1 && !parseCourseCode(line)) || 'LMS';
       const code = parseCourseCode(subjectLine) || parseCourseCode(lines.join(' '));
       const credits = parseCredits(subjectLine);
-      const { startTime, endTime, time } = buildTimeRange(startDate.toISOString(), 80);
+      const { startTime, endTime, time } = buildTimeRange(startDate, 80);
+
+      // Use UTC day because startDate is a proper UTC instant in Tashkent time
+      const dayIndex = startDate.getUTCDay();
 
       return {
         id: `lms_schedule_${startDate.getTime()}_${index}`,
         source: 'lms',
         name: subject,
         type: inferLessonType(event),
-        day: DAY_NAMES[startDate.getDay()] || 'Dushanba',
+        day: DAY_NAMES[dayIndex] || 'Dushanba',
         dateISO: startDate.toISOString(),
         startTime,
         endTime,
@@ -172,7 +189,7 @@ export const parseScheduleEvents = (events = []) => {
 export const parseDeadlineEvents = (events = []) => {
   return events
     .map((event, index) => {
-      const due = new Date(event?.start);
+      const due = parseEventDate(event?.start);
       if (Number.isNaN(due.getTime())) return null;
       const lines = splitLines(event.title || '');
       const subject = normalizeSubjectName(lines[0] || 'Fan vazifasi');

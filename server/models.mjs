@@ -58,3 +58,16 @@ const freelanceReviewSchema = new mongoose.Schema({
 
 export const Freelancer = mongoose.models.Freelancer || mongoose.model('Freelancer', freelancerSchema);
 export const FreelanceReview = mongoose.models.FreelanceReview || mongoose.model('FreelanceReview', freelanceReviewSchema);
+
+// Telegram bot integration
+const telegramUserSchema = new mongoose.Schema({
+  userEmail: { type: String, required: true, unique: true },
+  chatId: { type: String, required: true },
+  lang: { type: String, default: 'uz' },
+  notifyNb: { type: Boolean, default: true },
+  notifyTasks: { type: Boolean, default: true },
+  taskHoursBefore: { type: Number, default: 24 }, // notify when deadline < N hours
+  linkedAt: { type: Date, default: Date.now }
+});
+
+export const TelegramUser = mongoose.models.TelegramUser || mongoose.model('TelegramUser', telegramUserSchema);

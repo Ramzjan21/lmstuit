@@ -295,6 +295,18 @@ export const lmsService = {
 
     await updateLeaderboard({ userEmail, profile, grades });
 
+    // Trigger Telegram NB notification check silently
+    try {
+      await fetch('/api/telegram/check-nb', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grades })
+      });
+    } catch (e) {
+      console.warn('Telegram NB check failed:', e.message);
+    }
+
     await setJson(`courses_${userEmail}`, Array.isArray(data?.coursesPreview) ? data.coursesPreview : []);
 
     return {
