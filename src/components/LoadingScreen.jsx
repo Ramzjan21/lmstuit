@@ -1,10 +1,7 @@
 import React from 'react';
-import { GraduationCap, TerminalSquare } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { GraduationCap } from 'lucide-react';
 
 export default function LoadingScreen() {
-  const { t } = useI18n();
-
   return (
     <div className="loading-screen">
       <div className="bg-grid" />
@@ -33,7 +30,7 @@ export default function LoadingScreen() {
 
         <div>
           <h1 className="loading-title">TATU Portal</h1>
-          <p className="loading-subtitle">{t('loading.subtitle', 'Akademik tizimga xush kelibsiz')}</p>
+          <p className="loading-subtitle">Akademik tizimga xush kelibsiz</p>
         </div>
 
         <div className="loading-bar-container">

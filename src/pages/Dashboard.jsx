@@ -31,7 +31,9 @@ const toTimeText = (value, lang) => formatTime(value, lang);
 const countdown = (iso, t) => {
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return t('tasks.noTime');
-  const diff = target - Date.now();
+  const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' });
+  const nowMs = new Date(now).getTime();
+  const diff = target - nowMs;
   if (diff <= 0) return t('tasks.expired');
   const minutes = Math.floor(diff / (1000 * 60));
   if (minutes < 60) return t('tasks.leftMinutes', { value: minutes });
@@ -126,8 +128,10 @@ export default function Dashboard({ user, onLogout }) {
   }, [schedule, todayName]);
 
   const nextLesson = useMemo(() => {
+    const nowTashkent = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' });
+    const nowMs = new Date(nowTashkent).getTime();
     const upcoming = schedule
-      .filter((lesson) => lesson.dateISO && new Date(lesson.dateISO).getTime() > Date.now())
+      .filter((lesson) => lesson.dateISO && new Date(lesson.dateISO).getTime() > nowMs)
       .sort((a, b) => new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime());
     return upcoming[0] || null;
   }, [schedule]);

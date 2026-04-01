@@ -98,14 +98,11 @@ function App() {
   }, [user?.email]);
 
   const handleLogin = async (userData) => {
+    const detectedLang = userData.lang || 'uz';
     setUser(userData);
     await setJson('currentUser', userData);
-
-    const profile = await getJson(`profile_${userData.email}`, null);
-    const detected = detectLanguageFromProfile(profile);
-    setLang(detected);
-    await setJson(`lang_${userData.email}`, detected);
-    // Start auto-sync right after login
+    setLang(detectedLang);
+    await setJson(`lang_${userData.email}`, detectedLang);
     startAutoSync(userData);
   };
 

@@ -22,7 +22,9 @@ const countdownLabel = (iso, t) => {
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return t('tasks.noTime');
 
-  const diff = target - Date.now();
+  const nowTashkent = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' });
+  const nowMs = new Date(nowTashkent).getTime();
+  const diff = target - nowMs;
   if (diff <= 0) return t('tasks.expired');
 
   const minutes = Math.floor(diff / (1000 * 60));
@@ -130,7 +132,8 @@ export default function Tasks({ user }) {
     });
 
     const getUpcomingDeadline = (items) => {
-      const now = Date.now();
+      const nowTashkent = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' });
+      const now = new Date(nowTashkent).getTime();
       return items
         .map((task) => new Date(task.deadline || 0).getTime())
         .filter((time) => Number.isFinite(time) && time >= now)
