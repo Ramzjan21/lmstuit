@@ -123,10 +123,12 @@ export const parseCalendarJson = (html = '') => {
 
 const timeText = (date) => {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '--:--';
-  // Use UTC methods — date is already a proper UTC instant thanks to parseEventDate
-  const hh = String(date.getUTCHours()).padStart(2, '0');
-  const mm = String(date.getUTCMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tashkent',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(date);
 };
 
 const buildTimeRange = (isoOrDate, duration = 80) => {
@@ -153,8 +155,15 @@ export const parseScheduleEvents = (events = []) => {
       const credits = parseCredits(subjectLine);
       const { startTime, endTime, time } = buildTimeRange(startDate, 80);
 
-      // Use UTC day because startDate is a proper UTC instant in Tashkent time
-      const dayIndex = startDate.getUTCDay();
+      // Extract the correct day index in Tashkent time
+      const dayIndexStr = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tashkent', weekday: 'short' }).format(startDate);
+      const isSunday = dayIndexStr.startsWith('Sun'); // 0
+      const dayIndex = isSunday ? 0 : 
+                       dayIndexStr.startsWith('Mon') ? 1 : 
+                       dayIndexStr.startsWith('Tue') ? 2 : 
+                       dayIndexStr.startsWith('Wed') ? 3 : 
+                       dayIndexStr.startsWith('Thu') ? 4 : 
+                       dayIndexStr.startsWith('Fri') ? 5 : 6;
 
       return {
         id: `lms_schedule_${startDate.getTime()}_${index}`,
@@ -205,7 +214,7 @@ export const parseDeadlineEvents = (events = []) => {
         category: inferTaskCategory(work),
         description: [code ? `Kod: ${code}` : '', teacher ? `O'qituvchi: ${teacher}` : ''].filter(Boolean).join(' | '),
         deadline: due.toISOString(),
-        dueDate: due.toISOString().slice(0, 10),
+        dueDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit', day: '2-digit' }).format(due),
         completed: false,
         priority: inferTaskPriority(due.toISOString()),
         link: event.url || null
