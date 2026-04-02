@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BotMessageSquare, Check, ExternalLink, Unlink, Loader } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { lmsService } from '../services/lmsService';
 
 export default function TelegramLink({ user }) {
   const { lang } = useI18n();
@@ -19,7 +20,9 @@ export default function TelegramLink({ user }) {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/telegram/status');
+      const res = await fetch('/api/telegram/status', {
+        headers: lmsService.getAuthHeaders()
+      });
       const data = await res.json();
       setLinked(data.linked);
       setChatId(data.chatId || '');
@@ -49,7 +52,9 @@ export default function TelegramLink({ user }) {
         return;
       }
       try {
-        const res = await fetch('/api/telegram/status');
+        const res = await fetch('/api/telegram/status', {
+          headers: lmsService.getAuthHeaders()
+        });
         const data = await res.json();
         if (data.linked) {
           setLinked(true);
@@ -68,7 +73,7 @@ export default function TelegramLink({ user }) {
     try {
       const res = await fetch('/api/telegram/generate-link', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: lmsService.getAuthHeaders(),
         body: JSON.stringify({ lang })
       });
       const data = await res.json();
@@ -93,7 +98,10 @@ export default function TelegramLink({ user }) {
     if (!window.confirm('Botdan uzilishni xohlaysizmi?')) return;
     stopPolling();
     try {
-      await fetch('/api/telegram/unlink', { method: 'DELETE' });
+      await fetch('/api/telegram/unlink', { 
+        method: 'DELETE',
+        headers: lmsService.getAuthHeaders()
+      });
       setLinked(false);
       setChatId('');
       setBotUrl('');
@@ -103,7 +111,10 @@ export default function TelegramLink({ user }) {
 
   const handleTestMessage = async () => {
     try {
-      const res = await fetch('/api/telegram/test-message', { method: 'POST' });
+      const res = await fetch('/api/telegram/test-message', { 
+        method: 'POST',
+        headers: lmsService.getAuthHeaders()
+      });
       const data = await res.json();
       if (data.ok) {
         alert('Test xabar yuborildi! Telegramni tekshiring.');
