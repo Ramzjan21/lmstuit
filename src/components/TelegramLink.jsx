@@ -101,6 +101,20 @@ export default function TelegramLink({ user }) {
     } catch (e) {}
   };
 
+  const handleTestMessage = async () => {
+    try {
+      const res = await fetch('/api/telegram/test-message', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        alert('Test xabar yuborildi! Telegramni tekshiring.');
+      } else {
+        alert("❌ Xabar yuborishda xatolik. Bot ulanmagan bo'lishi mumkin.");
+      }
+    } catch (e) {
+      alert('❌ Server bilan ulanishda xatolik');
+    }
+  };
+
   if (loading) return null;
 
   return (
@@ -137,9 +151,14 @@ export default function TelegramLink({ user }) {
             <p className="text-sm mt-1">✅ Yangi NB qo'yilganda</p>
             <p className="text-sm">✅ Topshiriq muddati yaqinlashganda (har 5 daqiqa)</p>
           </div>
-          <button onClick={handleUnlink} style={{ background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit' }}>
-            <Unlink size={14} /> Botdan uzish
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={handleTestMessage} style={{ flex: 1, background: 'rgba(59,130,246,0.1)', border: 'none', color: '#3b82f6', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontFamily: 'inherit', fontWeight: 600 }}>
+              <BotMessageSquare size={14} /> Test xabar
+            </button>
+            <button onClick={handleUnlink} style={{ flex: 1, background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontFamily: 'inherit', fontWeight: 600 }}>
+              <Unlink size={14} /> Botdan uzish
+            </button>
+          </div>
         </div>
       ) : botUrl ? (
         /* ── Waiting for user to click Start in bot ── */

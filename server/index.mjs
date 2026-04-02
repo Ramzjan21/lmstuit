@@ -619,6 +619,24 @@ app.delete('/api/telegram/unlink', requireSession, async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
+// Test message
+app.post('/api/telegram/test-message', requireSession, async (req, res) => {
+  try {
+    const userEmail = req.session.lmsUser?.login;
+    if (!isMongoConnected) return res.json({ ok: false, reason: 'db_disconnected' });
+    
+    const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    if (!tgUser) return res.json({ ok: false });
+    
+    const text = tgUser.lang === 'ru' 
+      ? "🔔 <b>Тестовое сообщение!</b>\n\nВаш Telegram бот успешно подключён к приложению и работает отлично. 🎉"
+      : "🔔 <b>Test xabar!</b>\n\nTelegram botingiz dastur bilan to'g'ri ulangan va mukammal ishlamoqda. 🎉";
+      
+    await sendMessage(tgUser.chatId, text);
+    res.json({ ok: true });
+  } catch (err) { sendError(res, err); }
+});
+
 // Called by frontend after every LMS sync to check for new NBs, Scores, and Tasks
 app.post('/api/telegram/check-nb', requireSession, async (req, res) => {
   try {
