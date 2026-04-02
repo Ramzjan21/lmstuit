@@ -57,6 +57,8 @@ const messages = {
       teachersDesc: 'TATU ustozlarini baholash va sharhlar',
       warning: 'Davomat ogohlantirishi',
       warningDesc: '{count} ta fanda NB limiti xavf zonasida.',
+      freelance: 'Xizmatlar',
+      freelanceDesc: 'Talabalar xizmati (Freelance)',
       nextLesson: 'Yaqin dars',
       noNextLesson: 'Yaqin dars topilmadi',
       todayLessons: 'Bugungi darslar',
@@ -100,6 +102,10 @@ const messages = {
       leftDays: '{d} kun {h} soat qoldi',
       unknownSubject: 'Noma`lum fan',
       countTasks: '{count} ta topshiriq',
+      tgReminder: 'Eslatma',
+      tgReminderOn: 'Telegram eslatmasi faol',
+      tgReminderOff: 'Telegram eslatmasi yopiq',
+      tgReminderMsg: 'uchun Telegram eslatmasi yoqildi',
       categories: {
         all: 'Barchasi',
         homework: 'Uy vazifasi',
@@ -182,6 +188,28 @@ const messages = {
       subtitle: 'O`quv jarayoni bo`yicha savollaringizga javob beraman',
       inputPlaceholder: 'Savolingizni yozing...',
       loading: 'Javob tayyorlanmoqda...'
+    },
+    settings: {
+      title: 'Sozlamalar',
+      profileInfo: 'Profil ma`lumotlari',
+      regName: 'Ro`yxatdan o`tgan nom:',
+      sysId: 'Tizim ID (LMS):',
+      sysConfig: 'Tizim moslamalari',
+      appLang: 'Ilova Tili',
+      theme: 'Dizayn Mavzusi',
+      themeDark: 'Qorong`i (Dark)',
+      themeLight: 'Yorug` (Light)',
+      clearCache: 'Oflayn keshni tozalash',
+      clearCacheDesc: 'Dastur xotirani ko`p band qilsa',
+      clearing: 'Tozalanmoqda...',
+      notifications: 'Bildirishnomalar',
+      about: 'Dastur haqida',
+      version: 'Loyiha versiyasi',
+      backendStatus: 'LMS Server (Backend)',
+      online: 'Faol (Online)',
+      logout: 'Hisobdan chiqish',
+      confirmClear: 'Haqiqatdan ham barcha oflayn kesh ma`lumotlarni tozalaysizmi? (Kiritilgan sozlamalar saqlab qolinadi)',
+      cleared: 'Ma`lumotlar xotiradan muvaffaqiyatli tozalandi!'
     }
   },
   ru: {
@@ -240,6 +268,8 @@ const messages = {
       teachersDesc: 'Оценка и отзывы о преподавателях ТУИТ',
       warning: 'Предупреждение по посещаемости',
       warningDesc: 'В {count} предметах риск по лимиту NB.',
+      freelance: 'Услуги',
+      freelanceDesc: 'Студенческие услуги (Freelance)',
       nextLesson: 'Следующая пара',
       noNextLesson: 'Ближайших пар нет',
       todayLessons: 'Пары на сегодня',
@@ -283,6 +313,10 @@ const messages = {
       leftDays: 'Осталось {d} д {h} ч',
       unknownSubject: 'Неизвестный предмет',
       countTasks: '{count} заданий',
+      tgReminder: 'Уведомление',
+      tgReminderOn: 'Telegram уведомление акт.',
+      tgReminderOff: 'Telegram уведомление выкл.',
+      tgReminderMsg: 'включено Telegram уведомление для',
       categories: {
         all: 'Все',
         homework: 'Домашнее задание',
@@ -365,6 +399,28 @@ const messages = {
       subtitle: 'Отвечаю на вопросы по учебному процессу',
       inputPlaceholder: 'Введите ваш вопрос...',
       loading: 'Готовлю ответ...'
+    },
+    settings: {
+      title: 'Настройки',
+      profileInfo: 'Данные профиля',
+      regName: 'Зарегистрированное имя:',
+      sysId: 'ID в системе (LMS):',
+      sysConfig: 'Конфигурация',
+      appLang: 'Язык приложения',
+      theme: 'Тема оформления',
+      themeDark: 'Темная (Dark)',
+      themeLight: 'Светлая (Light)',
+      clearCache: 'Очистить офлайн-кэш',
+      clearCacheDesc: 'Если приложение занимает много памяти',
+      clearing: 'Очистка...',
+      notifications: 'Уведомления',
+      about: 'О приложении',
+      version: 'Версия проекта',
+      backendStatus: 'Сервер LMS (Backend)',
+      online: 'Активен (Online)',
+      logout: 'Выйти из аккаунта',
+      confirmClear: 'Вы действительно хотите очистить все кэшированные офлайн-данные? (Текущие настройки сохранятся)',
+      cleared: 'Данные успешно очищены из памяти!'
     }
   }
 };
@@ -397,7 +453,10 @@ export const translate = (lang, key, params = {}) => {
 
 export const I18nContext = createContext({
   lang: 'uz',
-  t: (key, params) => translate('uz', key, params)
+  t: (key, params) => translate('uz', key, params),
+  changeLanguage: () => {},
+  theme: 'dark',
+  changeTheme: () => {}
 });
 
 export const useI18n = () => useContext(I18nContext);

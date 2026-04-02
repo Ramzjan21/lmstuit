@@ -289,9 +289,9 @@ export default function Dashboard({ user, onLogout }) {
         >
           <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
             <Briefcase size={16} color="#f59e0b" />
-            <span className="font-semibold text-sm">Xizmatlar</span>
+            <span className="font-semibold text-sm">{t('dashboard.freelance')}</span>
           </div>
-          <p className="text-xs text-secondary mt-2">Talabalar xizmati (Freelance)</p>
+          <p className="text-xs text-secondary mt-2">{t('dashboard.freelanceDesc')}</p>
         </button>
       </div>
 

@@ -31,6 +31,41 @@
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  --body-bg-image: 
+    radial-gradient(circle at 10% 18%, rgba(0, 209, 255, 0.13), transparent 30%),
+    radial-gradient(circle at 88% 8%, rgba(0, 255, 179, 0.1), transparent 30%),
+    linear-gradient(180deg, #01040a 0%, #020a15 100%);
+    
+  --app-bg-image:
+    radial-gradient(circle at 14% 40%, rgba(0, 209, 255, 0.16), transparent 27%),
+    radial-gradient(circle at 88% 24%, rgba(0, 255, 179, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(2, 7, 17, 0.97), rgba(4, 16, 33, 0.95));
+}
+
+:root[data-theme="light"] {
+  --bg-main: #f0f4f8;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --border-color: rgba(0, 100, 200, 0.15);
+
+  --accent-primary: #0088cc;
+  --accent-secondary: #00b388;
+  --accent-gradient: linear-gradient(130deg, var(--accent-primary), var(--accent-secondary));
+  --accent-gradient-hover: linear-gradient(130deg, #0066aa, #009977);
+
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #e11d48;
+  --info: #0284c7;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+
+  --body-bg-image: none;
+  --app-bg-image: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+
 }
 
 * {
@@ -51,10 +86,7 @@ body {
   color: var(--text-primary);
   line-height: 1.5;
   min-height: 100vh;
-  background-image:
-    radial-gradient(circle at 10% 18%, rgba(0, 209, 255, 0.13), transparent 30%),
-    radial-gradient(circle at 88% 8%, rgba(0, 255, 179, 0.1), transparent 30%),
-    linear-gradient(180deg, #01040a 0%, #020a15 100%);
+  background-image: var(--body-bg-image);
 }
 
 h1,
@@ -113,10 +145,7 @@ h6 {
   overflow: hidden;
   transform: translateZ(0);
   background-color: var(--bg-main);
-  background-image:
-    radial-gradient(circle at 14% 40%, rgba(0, 209, 255, 0.16), transparent 27%),
-    radial-gradient(circle at 88% 24%, rgba(0, 255, 179, 0.12), transparent 24%),
-    linear-gradient(180deg, rgba(2, 7, 17, 0.97), rgba(4, 16, 33, 0.95));
+  background-image: var(--app-bg-image);
   display: flex;
   flex-direction: column;
 }

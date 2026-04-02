@@ -32,7 +32,14 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState('uz');
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('app_theme') || 'dark'; } catch { return 'dark'; }
+  });
   const autoSyncRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const AUTO_SYNC_INTERVAL = 30 * 60 * 1000; // 30 daqiqa
 
@@ -144,6 +151,11 @@ function App() {
     }
   };
 
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+    try { localStorage.setItem('app_theme', newTheme); } catch {}
+  };
+
   if (loading) {
     return <LoadingScreen lang={lang} />;
   }
@@ -151,7 +163,7 @@ function App() {
   const t = (key, params) => translate(lang, key, params);
 
   return (
-    <I18nContext.Provider value={{ lang, t, changeLanguage }}>
+    <I18nContext.Provider value={{ lang, t, changeLanguage, theme, changeTheme }}>
       <Router>
         <Routes>
           {/* Public Routes */}

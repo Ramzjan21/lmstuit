@@ -351,12 +351,12 @@ export default function Tasks({ user }) {
                                 onClick={() => sendToTelegram(task)}
                                 style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,136,204,0.12)', border: '1px solid rgba(0,136,204,0.2)', borderRadius: '8px', padding: '6px 10px', color: '#0088cc', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
                               >
-                                <BotMessageSquare size={12} /> Eslatma
+                                <BotMessageSquare size={12} /> {t('tasks.tgReminder')}
                               </button>
                             )}
                             {remindedTasks[task.id] && (
                               <span style={{ fontSize: '11px', color: '#0088cc', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Send size={11} /> Telegram eslatmasi faol
+                                <Send size={11} /> {t('tasks.tgReminderOn')}
                               </span>
                             )}
                           </div>
