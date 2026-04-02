@@ -84,9 +84,22 @@ const fetchPage = async (cookie, path, headers = {}) => {
     }
   });
 
+  if (response.status === 301 || response.status === 302 || response.status === 303) {
+    const error = new Error('Session expired');
+    error.status = 401;
+    throw error;
+  }
+
   if (response.status >= 400) {
     const error = new Error(`LMS page error: ${response.status}`);
     error.status = response.status;
+    throw error;
+  }
+
+  const responseHtml = String(response.data || '');
+  if (responseHtml.includes('name="login"') && responseHtml.includes('/auth/login')) {
+    const error = new Error('Session expired (HTML)');
+    error.status = 401;
     throw error;
   }
 
