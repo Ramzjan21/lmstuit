@@ -141,10 +141,19 @@ function App() {
       await removeKey(`lms_last_sync_${user.email}`);
       await removeKey(`courses_${user.email}`);
     }
-    setUser(null);
     await removeKey('currentUser');
-    setLang('uz');
+    setUser(null);
+    stopAutoSync();
   };
+
+  useEffect(() => {
+    const onAuthFailed = () => {
+      console.warn('LMS Auth completely failed. Forcing logout to clear broken state.');
+      handleLogout();
+    };
+    window.addEventListener('lms-auth-failed', onAuthFailed);
+    return () => window.removeEventListener('lms-auth-failed', onAuthFailed);
+  }, [user]);
 
   const changeLanguage = async (newLang) => {
     setLang(newLang);

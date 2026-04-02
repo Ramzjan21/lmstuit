@@ -697,8 +697,7 @@ app.post('/api/telegram/send-task-file', requireSession, async (req, res) => {
     
     res.json({ ok: true });
   } catch (err) { 
-    console.error('send-task-file error:', err.message);
-    res.status(500).json({ error: err.message }); 
+    sendError(res, err);
   }
 });
 

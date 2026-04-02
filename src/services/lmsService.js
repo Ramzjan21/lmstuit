@@ -111,6 +111,14 @@ const requestJson = async (path, options = {}) => {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        clearLmsCookie();
+        clearSessionId();
+        clearCreds();
+        window.dispatchEvent(new Event('lms-auth-failed'));
+      }
+    }
     const message = body?.error || body?.message || 'LMS so`rovda xatolik yuz berdi';
     throw new Error(message);
   }
