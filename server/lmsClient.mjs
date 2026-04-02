@@ -131,6 +131,19 @@ export const fetchFileBuffer = async (cookie, urlPath) => {
   return { buffer: Buffer.from(response.data), filename };
 };
 
+export const fetchTaskAttachmentLinks = async (cookie, taskUrl) => {
+  const html = await fetchPage(cookie, taskUrl);
+  // Find all file download links inside the page
+  const matches = Array.from(html.matchAll(/href="(https:\/\/lms\.tuit\.uz\/[^"]*download[^"]*)"/ig));
+  const links = new Set();
+  for (const match of matches) {
+    if (!match[1].includes('play.google') && !match[1].includes('apple.com')) {
+      links.add(match[1]);
+    }
+  }
+  return Array.from(links);
+};
+
 export const loginLms = async (login, password) => {
   const client = createClient();
 

@@ -15,7 +15,8 @@ import {
   fetchSchedule,
   fetchStudyPlan,
   loginLms,
-  fetchFileBuffer
+  fetchFileBuffer,
+  fetchTaskAttachmentLinks
 } from './lmsClient.mjs';
 
 const PORT = Number(process.env.PORT || 3030);
@@ -687,13 +688,28 @@ app.post('/api/telegram/send-task-file', requireSession, async (req, res) => {
     if (!tgUser) return res.json({ ok: false, error: 'Telegram ulanmagan' });
 
     // Download file from LMS
-    const { buffer, filename } = await fetchFileBuffer(req.session.lmsCookie, link);
+    // 1. First find the real file links from the web page
+    const fileLinks = await fetchTaskAttachmentLinks(req.session.lmsCookie, link);
     
-    const caption = tgUser.lang === 'ru'
-      ? `📄 Файл задания: <b>${title || 'Без названия'}</b>`
-      : `📄 Vazifa fayli: <b>${title || 'Nomsiz'}</b>`;
+    if (fileLinks.length === 0) {
+      // It means this task doesn't have an attachment (just text description)
+      const caption = tgUser.lang === 'ru'
+        ? `⚠️ В этом задании (<b>${title || 'Без названия'}</b>) нет файла.`
+        : `⚠️ Ushbu vazifada (<b>${title || 'Nomsiz'}</b>) biriktirilgan fayl yo'q. LMS'ga kirib o'qing.`;
+      await sendMessage(tgUser.chatId, caption);
+      return res.json({ ok: true, message: 'no_file' });
+    }
+
+    // 2. Download and send ALL found attachments
+    for (const attachmentUrl of fileLinks) {
+      const { buffer, filename } = await fetchFileBuffer(req.session.lmsCookie, attachmentUrl);
       
-    await sendDocument(tgUser.chatId, buffer, filename, caption);
+      const caption = tgUser.lang === 'ru'
+        ? `📄 Файл задания: <b>${title || 'Без названия'}</b>`
+        : `📄 Vazifa fayli: <b>${title || 'Nomsiz'}</b>`;
+        
+      await sendDocument(tgUser.chatId, buffer, filename, caption);
+    }
     
     res.json({ ok: true });
   } catch (err) { 
