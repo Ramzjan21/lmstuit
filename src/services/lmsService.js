@@ -32,26 +32,81 @@ const clearSessionId = () => {
   try { localStorage.removeItem('lms_session_id'); } catch {}
 };
 
+const saveCreds = (login, password) => {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem('lms_cr', btoa(`${login}:${password}`)); } catch {}
+};
+
+const getCreds = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const str = localStorage.getItem('lms_cr');
+    if (!str) return null;
+    const [login, password] = atob(str).split(':');
+    return { login, password };
+  } catch {
+    return null;
+  }
+};
+
+const clearCreds = () => {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem('lms_cr'); } catch {}
+};
+
+const getAuthHeaders = () => {
+  const lmsCookie = getLmsCookie();
+  const sessionId = getSessionId();
+  const headers = { 'Content-Type': 'application/json' };
+  if (lmsCookie) headers['x-lms-cookie'] = lmsCookie;
+  if (sessionId) headers['x-session-id'] = sessionId;
+  return headers;
+};
+
 const requestJson = async (path, options = {}) => {
   const lmsCookie = getLmsCookie();
   const sessionId = getSessionId();
   console.log('[lmsService] requestJson:', path, 'sessionId:', sessionId ? '✅' : '❌', 'lmsCookie:', lmsCookie ? '✅' : '❌');
+  
   const headers = {
-    'Content-Type': 'application/json',
+    ...getAuthHeaders(),
     ...(options.headers || {})
   };
-  if (lmsCookie) {
-    headers['x-lms-cookie'] = lmsCookie;
-  }
-  if (sessionId) {
-    headers['x-session-id'] = sessionId;
-  }
 
-  const response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
+  let response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
     credentials: 'include',
     ...options,
     headers
   });
+
+  if (response.status === 401) {
+    const creds = getCreds();
+    if (creds && creds.login && creds.password) {
+      console.warn('[lmsService] 401 received. Attempting auto re-login...');
+      const reloginRes = await fetch(`${DEFAULT_PROXY_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: creds.login, password: creds.password })
+      });
+      if (reloginRes.ok) {
+        const reloginData = await reloginRes.json();
+        if (reloginData.sessionId) {
+          setSessionId(reloginData.sessionId);
+          if (reloginData.lmsCookie) setLmsCookie(reloginData.lmsCookie);
+          
+          const newHeaders = {
+            ...getAuthHeaders(),
+            ...(options.headers || {})
+          };
+          response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
+            credentials: 'include',
+            ...options,
+            headers: newHeaders
+          });
+        }
+      }
+    }
+  }
 
   const body = await response.json().catch(() => ({}));
 
@@ -141,13 +196,10 @@ const updateLeaderboard = async ({ userEmail, profile, grades }) => {
   await setJson('leaderboard_users', updated.slice(0, 200));
 
   try {
-    const sessionId = getSessionId();
-    const headers = { 'Content-Type': 'application/json' };
-    if (sessionId) headers['x-session-id'] = sessionId;
     await fetch('/api/leaderboard', {
       method: 'POST',
       credentials: 'include',
-      headers,
+      headers: getAuthHeaders(),
       body: JSON.stringify(entry)
     });
   } catch (e) {
@@ -174,6 +226,8 @@ export const lmsService = {
         setLmsCookie(data.lmsCookie);
         console.log('[lmsService] lmsCookie saqlandi');
       }
+
+      saveCreds(login, password);
 
       await setJson('lms_user', { login, name: data?.name || login });
       return { success: true, name: data?.name || login };
@@ -359,13 +413,10 @@ export const lmsService = {
 
     // Trigger Telegram NB notification check silently
     try {
-      const sessionId = getSessionId();
-      const headers = { 'Content-Type': 'application/json' };
-      if (sessionId) headers['x-session-id'] = sessionId;
       await fetch('/api/telegram/check-nb', {
         method: 'POST',
         credentials: 'include',
-        headers,
+        headers: getAuthHeaders(),
         body: JSON.stringify({ grades })
       });
     } catch (e) {
@@ -386,14 +437,11 @@ export const lmsService = {
   },
 
   async logout() {
-    const sessionId = getSessionId();
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (sessionId) headers['x-session-id'] = sessionId;
       await fetch(`${DEFAULT_PROXY_BASE}/logout`, {
         method: 'POST',
         credentials: 'include',
-        headers
+        headers: getAuthHeaders()
       });
     } catch (error) {
       console.warn('LMS logout warning:', error.message);
@@ -401,6 +449,7 @@ export const lmsService = {
 
     clearSessionId();
     clearLmsCookie();
+    clearCreds();
     await removeKey('lms_user');
     clearBundleCache();
   }

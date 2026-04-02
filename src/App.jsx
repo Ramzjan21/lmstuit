@@ -65,9 +65,11 @@ function App() {
     const loadUser = async () => {
       try {
         const storedUser = await getJson('currentUser', null);
+        const autoCreds = localStorage.getItem('lms_cr');
         const sessionId = getSessionId();
         const lmsCookie = getLmsCookie();
-        if (storedUser && (sessionId || lmsCookie)) {
+
+        if (storedUser && (sessionId || lmsCookie || autoCreds)) {
           setUser(storedUser);
           const storedLang = await getJson(`lang_${storedUser.email}`, null);
           if (storedLang === 'ru' || storedLang === 'uz') {
@@ -76,7 +78,7 @@ function App() {
             const profile = await getJson(`profile_${storedUser.email}`, null);
             setLang(detectLanguageFromProfile(profile));
           }
-        } else if (storedUser && !sessionId && !lmsCookie) {
+        } else if (storedUser && !sessionId && !lmsCookie && !autoCreds) {
           console.warn('[App] Eski user topildi lekin session yo\'q - logout qilinmoqda');
           await removeKey('currentUser');
           await removeKey(`lang_${storedUser.email}`);
