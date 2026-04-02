@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview, TelegramUser } from './models.mjs';
-import { initBot, checkAndNotifyNb, startTaskReminder, stopTaskReminder, sendMessage, registerLinkToken, consumeLinkToken, getBotUsername } from './telegramBot.mjs';
+import { initBot, checkAndNotifyAll, startTaskReminder, stopTaskReminder, sendMessage, registerLinkToken, consumeLinkToken, getBotUsername } from './telegramBot.mjs';
 import {
   fetchAcademicBundle,
   fetchCourses,
@@ -619,19 +619,22 @@ app.delete('/api/telegram/unlink', requireSession, async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
-// Called by frontend after every LMS sync to check for new NBs
+// Called by frontend after every LMS sync to check for new NBs, Scores, and Tasks
 app.post('/api/telegram/check-nb', requireSession, async (req, res) => {
   try {
-    const { grades } = req.body;
+    const { grades, tasks } = req.body;
     const userEmail = req.session.lmsUser?.login;
-    if (!Array.isArray(grades)) return res.status(400).json({ error: 'grades array kerak' });
+    if (!Array.isArray(grades) && !Array.isArray(tasks)) {
+      return res.status(400).json({ error: 'grades yoki tasks array kerak' });
+    }
 
     if (!isMongoConnected) return res.json({ ok: false, reason: 'db_disconnected' });
 
     const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    // Use notifyNb setting for all global async notifications
     if (!tgUser || !tgUser.notifyNb) return res.json({ ok: true, skipped: true });
 
-    await checkAndNotifyNb(tgUser.chatId, userEmail, grades, tgUser.lang);
+    await checkAndNotifyAll(tgUser.chatId, userEmail, grades, tasks, tgUser.lang);
     res.json({ ok: true });
   } catch (err) { sendError(res, err); }
 });

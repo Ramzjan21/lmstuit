@@ -411,16 +411,16 @@ export const lmsService = {
 
     await updateLeaderboard({ userEmail, profile, grades });
 
-    // Trigger Telegram NB notification check silently
+    // Trigger Telegram notification check silently (NB, Score, Tasks)
     try {
       await fetch('/api/telegram/check-nb', {
         method: 'POST',
         credentials: 'include',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ grades })
+        body: JSON.stringify({ grades, tasks })
       });
     } catch (e) {
-      console.warn('Telegram NB check failed:', e.message);
+      console.warn('Telegram sync-check failed:', e.message);
     }
 
     await setJson(`courses_${userEmail}`, Array.isArray(data?.coursesPreview) ? data.coursesPreview : []);

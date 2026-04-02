@@ -8,8 +8,10 @@ let bot = null;
 // Store for pending task reminders: Map<taskId, intervalId>
 const taskReminders = new Map();
 
-// Store for NB state per user: Map<userEmail, Map<subjectName, nbCount>>
+// Global states per user
 const nbState = new Map();
+const scoreState = new Map();
+const tasksState = new Map();
 
 // Temp link tokens: Map<token, {userEmail, lang, resolve}>
 const pendingLinks = new Map();
@@ -58,6 +60,8 @@ export const initBot = (serverBaseUrl) => {
           const text =
             `✅ <b>Akkaunt muvaffaqiyatli ulandi!</b>\n\n` +
             `Endi sizga quyidagilar haqida xabar beraman:\n` +
+            `• 🌟 Yangi baho qo'yilganda\n` +
+            `• 📝 Yangi topshiriq yuklanganda\n` +
             `• 🔴 Yangi NB qo'yilganda\n` +
             `• ⏰ Topshiriq muddati yaqinlashganda (har 5 daqiqa)\n\n` +
             `O'qishlaringiz omadli bo'lsin! 🎓`;
@@ -157,55 +161,100 @@ export const sendMessage = async (chatId, text) => {
   }
 };
 
-export const checkAndNotifyNb = async (chatId, userEmail, grades, lang = 'uz') => {
-  if (!bot || !chatId || !Array.isArray(grades)) return;
+export const checkAndNotifyAll = async (chatId, userEmail, grades, tasks, lang = 'uz') => {
+  if (!bot || !chatId) return;
 
-  const prevState = nbState.get(userEmail) || new Map();
-  const newState = new Map();
+  // 1. Check Grades (NB and Score)
+  if (Array.isArray(grades)) {
+    const prevNbState = nbState.get(userEmail) || new Map();
+    const prevScoreState = scoreState.get(userEmail) || new Map();
+    const newNbState = new Map();
+    const newScoreState = new Map();
 
-  for (const subject of grades) {
-    const name = subject.name || subject.title || 'Fan';
-    const nb = Number(subject.nb || 0);
-    const limit = Number(subject.limit || 0);
-    newState.set(name, nb);
+    for (const subject of grades) {
+      const name = subject.name || subject.title || 'Fan';
+      const nb = Number(subject.nb || 0);
+      const limit = Number(subject.limit || 0);
+      const score = Number(subject.score || 0);
 
-    const prevNb = prevState.get(name) ?? null;
+      newNbState.set(name, nb);
+      newScoreState.set(name, score);
 
-    if (prevNb !== null && nb > prevNb) {
-      const added = nb - prevNb;
-      const remaining = limit > 0 ? limit - nb : '?';
+      const prevNb = prevNbState.get(name) ?? null;
+      const prevScore = prevScoreState.get(name) ?? null;
 
-      let text;
-      if (lang === 'ru') {
-        text =
-          `⚠️ <b>Новый пропуск!</b>\n\n` +
-          `📚 Предмет: <b>${name}</b>\n` +
-          `🔴 Добавлено НБ: <b>+${added}</b>\n` +
-          `📊 Всего НБ: <b>${nb}</b> из <b>${limit || '?'}</b>\n` +
-          `✅ Осталось допустимых: <b>${remaining}</b>\n\n` +
-          (remaining <= 2 && remaining >= 0 ? `🚨 <b>Внимание! Вы близко к лимиту!</b>` : `💡 Будьте внимательны на занятиях.`);
-      } else {
-        text =
-          `⚠️ <b>Yangi NB qo'yildi!</b>\n\n` +
-          `📚 Fan: <b>${name}</b>\n` +
-          `🔴 Qo'shilgan NB: <b>+${added}</b>\n` +
-          `📊 Jami NB: <b>${nb}</b> ta (limit: <b>${limit || '?'}</b>)\n` +
-          `✅ Qolgan ruxsat: <b>${remaining}</b> ta\n\n` +
-          (remaining <= 2 && remaining >= 0 ? `🚨 <b>Diqqat! Limitga yaqinlashyapsiz!</b>` : `💡 Darslarga qatnashing!`);
+      // a) NB Check
+      if (prevNb !== null && nb > prevNb) {
+        const added = nb - prevNb;
+        const remaining = limit > 0 ? limit - nb : '?';
+
+        let text;
+        if (lang === 'ru') {
+          text =
+            `⚠️ <b>Новый пропуск!</b>\n\n` +
+            `📚 Предмет: <b>${name}</b>\n` +
+            `🔴 Добавлено НБ: <b>+${added}</b>\n` +
+            `📊 Всего НБ: <b>${nb}</b> из <b>${limit || '?'}</b>\n` +
+            `✅ Осталось допустимых: <b>${remaining}</b>\n\n` +
+            (remaining <= 2 && remaining >= 0 ? `🚨 <b>Внимание! Вы близко к лимиту!</b>` : `💡 Будьте внимательны на занятиях.`);
+        } else {
+          text =
+            `⚠️ <b>Yangi NB qo'yildi!</b>\n\n` +
+            `📚 Fan: <b>${name}</b>\n` +
+            `🔴 Qo'shilgan NB: <b>+${added}</b>\n` +
+            `📊 Jami NB: <b>${nb}</b> ta (limit: <b>${limit || '?'}</b>)\n` +
+            `✅ Qolgan ruxsat: <b>${remaining}</b> ta\n\n` +
+            (remaining <= 2 && remaining >= 0 ? `🚨 <b>Diqqat! Limitga yaqinlashyapsiz!</b>` : `💡 Darslarga qatnashing!`);
+        }
+        await sendMessage(chatId, text);
       }
-      await sendMessage(chatId, text);
+
+      if (prevNb === null && limit > 0 && nb >= limit - 1 && nb > 0) {
+        const remaining = limit - nb;
+        const text = lang === 'ru'
+          ? `🚨 <b>Почти у лимита!</b>\nПредмет: <b>${name}</b>\nНБ: ${nb}/${limit} — осталось ${remaining}`
+          : `🚨 <b>Limitga yaqin!</b>\nFan: <b>${name}</b>\nNB: ${nb}/${limit} — qoldi ${remaining} ta`;
+        await sendMessage(chatId, text);
+      }
+
+      // b) Score Check
+      if (prevScore !== null && score > prevScore) {
+        const added = score - prevScore;
+        const text = lang === 'ru'
+          ? `🎉 <b>Новая оценка!</b>\n\n📚 Предмет: <b>${name}</b>\n🌟 Добавлено: <b>+${added}</b>\n💎 Общий балл: <b>${score}</b>`
+          : `🎉 <b>Yangi baho!</b>\n\n📚 Fan: <b>${name}</b>\n🌟 Qo'shildi: <b>+${added}</b>\n💎 Jami ball: <b>${score}</b>`;
+        await sendMessage(chatId, text);
+      }
     }
 
-    if (prevNb === null && limit > 0 && nb >= limit - 1 && nb > 0) {
-      const remaining = limit - nb;
-      const text = lang === 'ru'
-        ? `🚨 <b>Почти у лимита!</b>\nПредмет: <b>${name}</b>\nНБ: ${nb}/${limit} — осталось ${remaining}`
-        : `🚨 <b>Limitga yaqin!</b>\nFan: <b>${name}</b>\nNB: ${nb}/${limit} — qoldi ${remaining} ta`;
-      await sendMessage(chatId, text);
-    }
+    nbState.set(userEmail, newNbState);
+    scoreState.set(userEmail, newScoreState);
   }
 
-  nbState.set(userEmail, newState);
+  // 2. Check New Tasks
+  if (Array.isArray(tasks)) {
+    const prevTasks = tasksState.get(userEmail) || new Set();
+    const newTasks = new Set();
+
+    for (const task of tasks) {
+      if (!task.id) continue;
+      newTasks.add(task.id);
+
+      if (prevTasks.size > 0 && !prevTasks.has(task.id)) {
+        // format deadline beautifully if possible, skipping for brevity
+        const text = lang === 'ru'
+          ? `📝 <b>Новое задание!</b>\n\n📚 Предмет: <b>${task.subject || 'LMS'}</b>\n📌 Название: <b>${task.title}</b>\n⏳ Дедлайн: <b>${task.deadline || 'Не указан'}</b>\n\n📲 Проверьте подробности в приложении!`
+          : `📝 <b>Yangi topshiriq yuklandi!</b>\n\n📚 Fan: <b>${task.subject || 'LMS'}</b>\n📌 Nomi: <b>${task.title}</b>\n⏳ Muddat: <b>${task.deadline || 'Kiritilmagan'}</b>\n\n📲 Ilovaga kirib batafsil tanishing!`;
+        await sendMessage(chatId, text);
+      }
+    }
+
+    if (prevTasks.size === 0 && tasks.length > 0) {
+      tasks.forEach(t => { if (t.id) newTasks.add(t.id); });
+    }
+
+    tasksState.set(userEmail, newTasks);
+  }
 };
 
 export const startTaskReminder = async (chatId, task, lang = 'uz') => {
