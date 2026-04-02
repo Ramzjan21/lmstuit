@@ -180,7 +180,7 @@ export default function Dashboard({ user, onLogout }) {
           <button
             onClick={() => navigate('/settings')}
             className="glass-panel p-2 flex-center"
-            style={{ border: 'none', background: 'rgba(255,255,255,0.08)', color: 'white', cursor: 'pointer', borderRadius: '12px' }}
+            style={{ border: 'none', background: 'var(--glass-lightbg)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '12px' }}
             title="Sozlamalar"
           >
             <SettingsIcon size={20} />
@@ -341,8 +341,8 @@ export default function Dashboard({ user, onLogout }) {
             <button
               key={lesson.id}
               onClick={() => navigate('/timetable')}
-              className="glass-panel p-3"
-              style={{ border: 'none', textAlign: 'left', cursor: 'pointer', background: 'rgba(255,255,255,0.04)' }}
+              className="glass-panel p-3 hover-effect"
+              style={{ border: 'none', textAlign: 'left', cursor: 'pointer', background: 'var(--glass-bg)' }}
             >
               <div className="flex-between">
                 <span className="font-semibold text-sm">{lesson.name}</span>
@@ -369,8 +369,8 @@ export default function Dashboard({ user, onLogout }) {
             <button
               key={task.id}
               onClick={() => navigate('/tasks')}
-              className="glass-panel p-3"
-              style={{ border: 'none', textAlign: 'left', cursor: 'pointer', background: 'rgba(255,255,255,0.04)' }}
+              className="glass-panel p-3 hover-effect"
+              style={{ border: 'none', textAlign: 'left', cursor: 'pointer', background: 'var(--glass-bg)' }}
             >
               <div className="flex-between" style={{ alignItems: 'flex-start', gap: '8px' }}>
                 <div>
@@ -404,8 +404,8 @@ const quickBtnStyle = (color) => ({
   display: 'flex',
   alignItems: 'center',
   gap: '6px',
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid var(--glass-border)',
+  background: 'var(--glass-bg)',
   color,
   padding: '8px 9px',
   borderRadius: '8px',

@@ -197,7 +197,7 @@ export default function Timetable({ user }) {
         </div>
       </div>
 
-      <div className="glass-panel p-2 mb-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+      <div className="glass-panel p-2 mb-3" style={{ background: 'var(--glass-bg)' }}>
         <div className="hide-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
           {WEEK_DAYS.map((day) => {
             const count = (lessonsByDay.get(day) || []).length;
@@ -208,7 +208,7 @@ export default function Timetable({ user }) {
                 onClick={() => setActiveDay(day)}
                 style={{
                   border: `1px solid ${isActive ? 'rgba(0,209,255,0.45)' : 'var(--border-color)'}`,
-                  background: isActive ? 'rgba(0,209,255,0.18)' : 'rgba(255,255,255,0.03)',
+                  background: isActive ? 'rgba(0,209,255,0.18)' : 'var(--glass-bg)',
                   color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                   borderRadius: '12px',
                   padding: '8px 10px',
@@ -254,7 +254,7 @@ export default function Timetable({ user }) {
             );
           })
         ) : (
-          <div className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <div className="glass-panel p-4" style={{ background: 'var(--glass-bg)' }}>
             <p className="text-sm text-secondary text-center">{t('timetable.noDayLessons')}</p>
           </div>
         )}

@@ -23,6 +23,11 @@
   --font-base: 'Exo 2', sans-serif;
   --font-display: 'Share Tech Mono', monospace;
 
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-lightbg: rgba(255, 255, 255, 0.12);
+  --glass-text-muted: rgba(255, 255, 255, 0.4);
+
   --bottom-nav-height: 70px;
   --border-radius-sm: 8px;
   --border-radius-md: 16px;
@@ -62,6 +67,11 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
+
+  --glass-bg: rgba(0, 0, 0, 0.03);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-lightbg: rgba(0, 0, 0, 0.08);
+  --glass-text-muted: rgba(0, 0, 0, 0.5);
 
   --body-bg-image: none;
   --app-bg-image: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
@@ -522,9 +532,9 @@ h6 {
 /* Telegram Native Input Styling */
 .tg-input {
   width: 100%;
-  background: var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.05));
-  color: var(--tg-theme-text-color, #ffffff);
+  background: var(--tg-theme-secondary-bg-color, var(--bg-card));
+  border: 1px solid var(--tg-theme-secondary-bg-color, var(--border-color));
+  color: var(--tg-theme-text-color, var(--text-primary));
   border-radius: 14px;
   padding: 16px;
   font-size: 16px; 
@@ -534,13 +544,13 @@ h6 {
 }
 
 .tg-input:focus {
-  background: var(--tg-theme-bg-color, rgba(255, 255, 255, 0.08));
+  background: var(--tg-theme-bg-color, var(--bg-card-hover));
   border-color: var(--tg-theme-button-color, var(--accent-primary));
   box-shadow: 0 0 0 4px rgba(0, 209, 255, 0.15);
 }
 
 .tg-input::placeholder {
-  color: var(--tg-theme-hint-color, rgba(255, 255, 255, 0.4));
+  color: var(--tg-theme-hint-color, var(--text-tertiary));
 }
 
 /* ─── CYBER LOADING ANIMATION ────────────────────────────────────────────────────── */

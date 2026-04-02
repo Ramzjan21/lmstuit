@@ -244,7 +244,7 @@ export default function Tasks({ user }) {
         </div>
       </div>
 
-      <div className="glass-panel p-2 mb-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+      <div className="glass-panel p-2 mb-2" style={{ background: 'var(--glass-bg)' }}>
         <div className="hide-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
           {categoryTabs.map((tabId) => (
             <button
@@ -252,7 +252,7 @@ export default function Tasks({ user }) {
               onClick={() => setActiveCategory(tabId)}
               style={{
                 border: `1px solid ${activeCategory === tabId ? 'rgba(0,209,255,0.45)' : 'var(--border-color)'}`,
-                background: activeCategory === tabId ? 'rgba(0,209,255,0.18)' : 'rgba(255,255,255,0.03)',
+                background: activeCategory === tabId ? 'rgba(0,209,255,0.18)' : 'var(--glass-bg)',
                 color: activeCategory === tabId ? 'var(--accent-primary)' : 'var(--text-secondary)',
                 borderRadius: '16px',
                 padding: '6px 12px',
@@ -266,7 +266,7 @@ export default function Tasks({ user }) {
         </div>
       </div>
 
-      <div className="glass-panel p-2 mb-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+      <div className="glass-panel p-2 mb-3" style={{ background: 'var(--glass-bg)' }}>
         <div className="hide-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
           {subjects.map((subject) => (
             <button
@@ -274,7 +274,7 @@ export default function Tasks({ user }) {
               onClick={() => setSubjectFilter(subject)}
               style={{
                 border: `1px solid ${subjectFilter === subject ? 'rgba(34,197,94,0.45)' : 'var(--border-color)'}`,
-                background: subjectFilter === subject ? 'rgba(34,197,94,0.16)' : 'rgba(255,255,255,0.03)',
+                background: subjectFilter === subject ? 'rgba(34,197,94,0.16)' : 'var(--glass-bg)',
                 color: subjectFilter === subject ? 'var(--success)' : 'var(--text-secondary)',
                 borderRadius: '16px',
                 padding: '6px 12px',
@@ -301,11 +301,11 @@ export default function Tasks({ user }) {
               const isOpen = openSubject === groupItem.subject;
 
               return (
-                <div key={groupItem.subject} className="glass-panel p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                <div key={groupItem.subject} className="glass-panel p-3" style={{ background: 'var(--glass-bg)' }}>
                   <button
                     onClick={() => setOpenSubject((prev) => (prev === groupItem.subject ? '' : groupItem.subject))}
                     className="w-full"
-                    style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left' }}
+                    style={{ background: 'none', border: 'none', color: "var(--text-primary)", cursor: 'pointer', textAlign: 'left' }}
                   >
                     <div className="flex-between" style={{ alignItems: 'center', gap: '8px' }}>
                       <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
@@ -368,7 +368,7 @@ export default function Tasks({ user }) {
               );
             })
         ) : (
-          <div className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <div className="glass-panel p-4" style={{ background: 'var(--glass-bg)' }}>
             <p className="text-center text-secondary text-sm">{t('tasks.noFiltered')}</p>
           </div>
         )}

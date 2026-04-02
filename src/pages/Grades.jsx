@@ -255,7 +255,7 @@ export default function Grades({ user }) {
       )}
 
       {!!semesterOverview.length && (
-        <div className="glass-panel p-3 mb-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        <div className="glass-panel p-3 mb-4" style={{ background: 'var(--glass-bg)' }}>
           <p className="font-semibold text-sm mb-2">{t('grades.semesterOverview')}</p>
           <div className="flex-column gap-2">
             {semesterOverview.map((semester) => (
@@ -283,7 +283,7 @@ export default function Grades({ user }) {
             const nb = Number(subject.nb || 0);
 
             return (
-              <div key={subject.id} className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <div key={subject.id} className="glass-panel p-4" style={{ background: 'var(--glass-bg)' }}>
                 <div className="flex-between mb-3" style={{ alignItems: 'flex-start', gap: '10px' }}>
                   <div>
                     <p className="font-semibold text-sm">{subject.name}</p>
@@ -298,7 +298,7 @@ export default function Grades({ user }) {
                       gap: '4px',
                       color: tone.color,
                       fontWeight: 700,
-                      background: 'rgba(255,255,255,0.08)',
+                      background: 'var(--glass-lightbg)',
                       padding: '4px 8px',
                       borderRadius: '999px'
                     }}
@@ -316,7 +316,7 @@ export default function Grades({ user }) {
                       styles={buildStyles({
                         pathColor: tone.color,
                         textColor: 'var(--text-primary)',
-                        trailColor: 'rgba(255,255,255,0.12)',
+                        trailColor: 'var(--glass-lightbg)',
                         textSize: '24px'
                       })}
                     />
@@ -330,7 +330,7 @@ export default function Grades({ user }) {
                       </p>
                     </div>
 
-                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.12)', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '8px', background: 'var(--glass-lightbg)', borderRadius: '6px', overflow: 'hidden' }}>
                       <div
                         style={{
                           width: `${ratio}%`,

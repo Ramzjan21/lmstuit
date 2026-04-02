@@ -78,11 +78,11 @@ export default function Leaderboard({ user }) {
         <div className="glass-panel p-3 mb-2 flex-between" style={{ background: 'rgba(34,211,238,0.08)', borderColor: 'rgba(34,211,238,0.25)', borderRadius: '16px' }}>
           <div>
             <p className="text-xs text-secondary">{t('leaderboard.yourRank')}</p>
-            <p className="font-bold text-md mt-1" style={{ color: '#22d3ee' }}>#{userIndex + 1} <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', fontWeight: 'normal' }}>/ {rows.length}</span></p>
+            <p className="font-bold text-md mt-1" style={{ color: '#22d3ee' }}>#{userIndex + 1} <span style={{ fontSize: '12px', color: 'var(--glass-text-muted)', fontWeight: 'normal' }}>/ {rows.length}</span></p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p className="text-xs text-secondary">Sizning balingiz</p>
-            <p className="font-bold text-md mt-1" style={{ color: 'white' }}>{rows[userIndex]?.rating || 0}</p>
+            <p className="font-bold text-md mt-1" style={{ color: "var(--text-primary)" }}>{rows[userIndex]?.rating || 0}</p>
           </div>
         </div>
       )}
@@ -98,11 +98,11 @@ export default function Leaderboard({ user }) {
                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', border: '3px solid #0ea5e9', boxShadow: '0 0 15px rgba(14,165,233,0.3)' }}>
                   {getInitials(top3[1].name)}
                 </div>
-                <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', background: '#0ea5e9', color: 'white', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>2</div>
+                <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', background: '#0ea5e9', color: "var(--text-primary)", width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>2</div>
               </div>
               <p className="font-semibold mt-3" style={{ fontSize: '13px', textAlign: 'center', lineHeight: 1.1, height: '30px', overflow: 'hidden' }}>{top3[1].name}</p>
               <p style={{ fontSize: '15px', color: '#38bdf8', fontWeight: 'bold', marginTop: '4px' }}>{top3[1].rating || 0}</p>
-              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>@{top3[1].group || 'TATU'}</p>
+              <p style={{ fontSize: '10px', color: 'var(--glass-text-muted)', marginTop: '2px' }}>@{top3[1].group || 'TATU'}</p>
             </div>
           )}
 
@@ -118,7 +118,7 @@ export default function Leaderboard({ user }) {
               </div>
               <p className="font-semibold mt-4" style={{ fontSize: '15px', textAlign: 'center', lineHeight: 1.2, height: '36px', overflow: 'hidden' }}>{top3[0].name}</p>
               <p style={{ fontSize: '20px', color: '#facc15', fontWeight: 'bold', marginTop: '2px' }}>{top3[0].rating || 0}</p>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>@{top3[0].group || 'TATU'}</p>
+              <p style={{ fontSize: '11px', color: 'var(--glass-text-muted)', marginTop: '2px' }}>@{top3[0].group || 'TATU'}</p>
             </div>
           )}
 
@@ -129,18 +129,18 @@ export default function Leaderboard({ user }) {
                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #34d399)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', border: '3px solid #10b981', boxShadow: '0 0 15px rgba(16,185,129,0.3)' }}>
                   {getInitials(top3[2].name)}
                 </div>
-                <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', background: '#10b981', color: 'white', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>3</div>
+                <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', background: '#10b981', color: "var(--text-primary)", width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', border: '2px solid var(--bg-main)' }}>3</div>
               </div>
               <p className="font-semibold mt-3" style={{ fontSize: '13px', textAlign: 'center', lineHeight: 1.1, height: '30px', overflow: 'hidden' }}>{top3[2].name}</p>
               <p style={{ fontSize: '15px', color: '#34d399', fontWeight: 'bold', marginTop: '4px' }}>{top3[2].rating || 0}</p>
-              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>@{top3[2].group || 'TATU'}</p>
+              <p style={{ fontSize: '10px', color: 'var(--glass-text-muted)', marginTop: '2px' }}>@{top3[2].group || 'TATU'}</p>
             </div>
           )}
         </div>
       )}
 
       {/* Rest List Section */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '24px 24px 0 0', padding: '20px', margin: '0 -20px 0 -20px' }}>
+      <div style={{ background: 'var(--glass-bg)', borderRadius: '24px 24px 0 0', padding: '20px', margin: '0 -20px 0 -20px' }}>
         {!topRows.length ? (
             <p className="text-center text-secondary text-sm mt-4">{t('leaderboard.empty')}</p>
         ) : (
@@ -154,7 +154,7 @@ export default function Leaderboard({ user }) {
                   key={row.userEmail} 
                   className="flex-between py-3" 
                   style={{ 
-                    borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                    borderBottom: '1px solid var(--glass-border)', 
                     padding: '12px 10px', 
                     borderRadius: '12px',
                     background: isMe ? 'rgba(34, 211, 238, 0.1)' : 'transparent',
@@ -162,18 +162,18 @@ export default function Leaderboard({ user }) {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'rgba(255,255,255,0.3)', width: '24px', textAlign: 'center' }}>{rank}</span>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 'bold', color: 'white' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--glass-text-muted)', width: '24px', textAlign: 'center' }}>{rank}</span>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--glass-lightbg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 'bold', color: "var(--text-primary)" }}>
                       {getInitials(row.name)}
                     </div>
                     <div>
-                      <p className="font-semibold" style={{ fontSize: '14px', color: 'white' }}>{row.name} {isMe && <span style={{ color: '#22d3ee', fontSize: '12px', marginLeft: '4px' }}>(Siz)</span>}</p>
+                      <p className="font-semibold" style={{ fontSize: '14px', color: "var(--text-primary)" }}>{row.name} {isMe && <span style={{ color: '#22d3ee', fontSize: '12px', marginLeft: '4px' }}>(Siz)</span>}</p>
                       <p className="text-secondary" style={{ fontSize: '11px', marginTop: '2px' }}>@{row.group || 'Guruhsiz'} | {row.course ? `${row.course}-kurs` : '?'}</p>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', marginLeft: '10px' }}>
                     <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{row.rating || 0}</p>
-                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>gpa: {row.gpa || 0}</p>
+                    <p style={{ fontSize: '10px', color: 'var(--glass-text-muted)', marginTop: '2px' }}>gpa: {row.gpa || 0}</p>
                   </div>
                 </div>
               );

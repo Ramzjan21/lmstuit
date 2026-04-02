@@ -156,7 +156,7 @@ export default function AIChat({ user }) {
                 width: '34px',
                 height: '34px',
                 borderRadius: '50%',
-                background: msg.role === 'assistant' ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.1)',
+                background: msg.role === 'assistant' ? 'var(--accent-gradient)' : 'var(--glass-lightbg)',
                 flexShrink: 0,
                 alignSelf: 'flex-end',
                 boxShadow: msg.role === 'assistant' ? '0 4px 15px rgba(99,102,241,0.3)' : 'none'
@@ -174,9 +174,9 @@ export default function AIChat({ user }) {
                   borderRadius: msg.role === 'assistant' ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
                 }}
               >
-                <p className="text-sm" style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'white' }}>{msg.content}</p>
+                <p className="text-sm" style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: "var(--text-primary)" }}>{msg.content}</p>
               </div>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)', marginTop: '4px', textAlign: msg.role === 'user' ? 'right' : 'left', paddingLeft: msg.role === 'assistant' ? '4px' : 0, paddingRight: msg.role === 'user' ? '4px' : 0 }}>
+              <p className="text-xs" style={{ color: 'var(--glass-text-muted)', marginTop: '4px', textAlign: msg.role === 'user' ? 'right' : 'left', paddingLeft: msg.role === 'assistant' ? '4px' : 0, paddingRight: msg.role === 'user' ? '4px' : 0 }}>
                 {fmtTime(msg.timestamp)}
               </p>
             </div>
@@ -206,8 +206,8 @@ export default function AIChat({ user }) {
         display: 'flex',
         alignItems: 'flex-end',
         gap: '10px',
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--glass-bg)',
+        border: '1px solid var(--glass-lightbg)',
         borderRadius: '24px',
         padding: '8px 8px 8px 16px',
       }}>
@@ -223,7 +223,7 @@ export default function AIChat({ user }) {
             flex: 1,
             background: 'none',
             border: 'none',
-            color: 'white',
+            color: "var(--text-primary)",
             fontSize: '15px',
             lineHeight: '1.5',
             outline: 'none',
@@ -241,7 +241,7 @@ export default function AIChat({ user }) {
             width: '40px',
             height: '40px',
             flexShrink: 0,
-            background: canSend ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.06)',
+            background: canSend ? 'var(--accent-gradient)' : 'var(--glass-border)',
             border: 'none',
             borderRadius: '50%',
             display: 'flex',
@@ -253,7 +253,7 @@ export default function AIChat({ user }) {
             transform: canSend ? 'scale(1)' : 'scale(0.95)'
           }}
         >
-          <Send size={18} color={canSend ? 'white' : 'rgba(255,255,255,0.3)'} style={{ marginLeft: '2px' }} />
+          <Send size={18} color={canSend ? 'white' : 'var(--glass-text-muted)'} style={{ marginLeft: '2px' }} />
         </button>
       </div>
 

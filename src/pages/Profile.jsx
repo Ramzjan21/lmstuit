@@ -64,7 +64,7 @@ export default function Profile({ user }) {
             onClick={refreshProfile}
             disabled={syncing}
             className="glass-panel p-2 flex-center"
-            style={{ border: 'none', background: 'rgba(255,255,255,0.06)', color: 'white', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'var(--glass-border)', color: "var(--text-primary)", cursor: 'pointer' }}
             title={t('common.sync')}
           >
             <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
@@ -82,7 +82,7 @@ export default function Profile({ user }) {
 
       <div className="flex-column gap-3 mb-4">
         {cards.map((item) => (
-          <div key={item.id} className="glass-panel p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <div key={item.id} className="glass-panel p-3" style={{ background: 'var(--glass-bg)' }}>
             <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
               <span style={{ color: 'var(--accent-primary)' }}>{item.icon}</span>
               <span className="text-xs text-secondary">{item.label}</span>
@@ -92,7 +92,7 @@ export default function Profile({ user }) {
         ))}
       </div>
 
-      <div className="glass-panel p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
+      <div className="glass-panel p-4" style={{ background: 'var(--glass-bg)' }}>
         <div className="flex-column gap-2">
           <p style={profileItemStyle}>{t('profile.labels.birthDate')} <span style={{ color: 'var(--text-primary)' }}>{profile?.birthDate || '--'}</span></p>
           <p style={profileItemStyle}>{t('profile.labels.gender')} <span style={{ color: 'var(--text-primary)' }}>{profile?.gender || '--'}</span></p>

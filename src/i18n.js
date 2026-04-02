@@ -210,6 +210,40 @@ const messages = {
       logout: 'Hisobdan chiqish',
       confirmClear: 'Haqiqatdan ham barcha oflayn kesh ma`lumotlarni tozalaysizmi? (Kiritilgan sozlamalar saqlab qolinadi)',
       cleared: 'Ma`lumotlar xotiradan muvaffaqiyatli tozalandi!'
+    },
+    teachers: {
+      title: 'Ustozlar Reytingi',
+      search: 'Ism yoki kafedrani izlang...',
+      empty: 'Hech qanday ustoz topilmadi',
+      reviews: 'sharh',
+      reviewEmpty: 'Hali sharhlar yo`q!\nBirinchi bo`lib baholang va sharh qoldiring.',
+      rate: 'BAHO BERING:',
+      reviewPlaceholder: 'Ustoz haqdagi fikringizni yozing...',
+      submitReview: 'Sharh yuborish',
+      avgRating: 'O`RTACHA BAHO',
+      totalReviews: 'Umumiy {count} ta sharh'
+    },
+    freelance: {
+      title: 'Talabalar Xizmati',
+      subtitle: 'TATU talabalari tomonidan taqdim etiladigan xizmatlar (Freelance)',
+      search: 'Xizmat yoki frilanserni izlang...',
+      empty: 'Siz izlagan xizmat topilmadi',
+      reviews: 'sharh',
+      reviewEmpty: 'Hali sharhlar yo`q!\nBirinchi bo`lib baholang va sharh qoldiring.',
+      rate: 'BAHO BERING:',
+      reviewPlaceholder: 'Xizmat haqdagi fikringizni yozing...',
+      submitReview: 'Sharh yuborish',
+      contact: 'Aloqa uchun (Telegram / Tel)',
+      myServices: 'Mening xizmatlarim',
+      price: 'Narxi:',
+      addService: 'Yangi xizmat qo`shish',
+      serviceName: 'Xizmat nomi',
+      description: 'Qisqacha ta`rif',
+      priceLabel: 'Narxi (so`m)',
+      save: 'Saqlash',
+      contactInfo: 'Bog`lanish uchun (Telegram yoki Tel)',
+      avgRating: 'O`RTACHA BAHO',
+      totalReviews: 'Umumiy {count} ta sharh'
     }
   },
   ru: {
@@ -228,7 +262,8 @@ const messages = {
       unknownSemester: 'Неизвестный семестр',
       sync: 'Обновить',
       viewAll: 'Все',
-      noData: 'Данные не найдены'
+      noData: 'Данные не найдены',
+      errorGeneric: 'Произошла ошибка'
     },
     login: {
       title: 'TATU Cyber Portal',
@@ -421,6 +456,40 @@ const messages = {
       logout: 'Выйти из аккаунта',
       confirmClear: 'Вы действительно хотите очистить все кэшированные офлайн-данные? (Текущие настройки сохранятся)',
       cleared: 'Данные успешно очищены из памяти!'
+    },
+    teachers: {
+      title: 'Рейтинг Преподавателей',
+      search: 'Поиск по имени или кафедре...',
+      empty: 'Преподаватели не найдены',
+      reviews: 'отзывов',
+      reviewEmpty: 'Отзывов пока нет!\nБудьте первым, кто оценит и оставит отзыв.',
+      rate: 'ОЦЕНИТЕ:',
+      reviewPlaceholder: 'Напишите ваше мнение о преподавателе...',
+      submitReview: 'Отправить отзыв',
+      avgRating: 'СРЕДНЯЯ ОЦЕНКА',
+      totalReviews: 'Всего {count} отзывов'
+    },
+    freelance: {
+      title: 'Студенческие Услуги',
+      subtitle: 'Услуги, предоставляемые студентами ТУИТ (Freelance)',
+      search: 'Поиск услуг или фрилансера...',
+      empty: 'Услуга не найдена',
+      reviews: 'отзывов',
+      reviewEmpty: 'Отзывов пока нет!\nБудьте первым, кто оценит и оставит отзыв.',
+      rate: 'ОЦЕНИТЕ:',
+      reviewPlaceholder: 'Напишите ваше мнение об услуге...',
+      submitReview: 'Отправить отзыв',
+      contact: 'Для связи (Telegram / Тел)',
+      myServices: 'Мои услуги',
+      price: 'Цена:',
+      addService: 'Добавить услугу',
+      serviceName: 'Название услуги',
+      description: 'Краткое описание',
+      priceLabel: 'Цена (сум)',
+      save: 'Сохранить',
+      contactInfo: 'Для связи (Telegram или Тел)',
+      avgRating: 'СРЕДНЯЯ ОЦЕНКА',
+      totalReviews: 'Всего {count} отзывов'
     }
   }
 };

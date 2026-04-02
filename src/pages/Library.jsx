@@ -154,7 +154,7 @@ export default function Library({ user }) {
       <h1 className="text-gradient mb-1">Kutubxona</h1>
       <p className="text-secondary text-sm mb-4">{t('library.subtitle')}</p>
 
-      <div className="flex-center mb-5" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '4px' }}>
+      <div className="flex-center mb-5" style={{ background: 'var(--glass-border)', borderRadius: '12px', padding: '4px' }}>
         <button
           className="flex-center gap-2"
           onClick={() => setActiveTab('materials')}
@@ -269,7 +269,7 @@ export default function Library({ user }) {
               style={{
                 background: isRecording ? 'var(--danger)' : 'var(--accent-primary)',
                 border: 'none',
-                color: 'white',
+                color: "var(--text-primary)",
                 padding: '10px 16px',
                 borderRadius: '8px',
                 cursor: 'pointer',
