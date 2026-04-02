@@ -54,12 +54,23 @@ const clearCreds = () => {
   try { localStorage.removeItem('lms_cr'); } catch {}
 };
 
+const getCurrentUserLogin = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('currentUser');
+    if (raw) return JSON.parse(raw).email;
+  } catch { return null; }
+  return null;
+};
+
 const getAuthHeaders = () => {
   const lmsCookie = getLmsCookie();
   const sessionId = getSessionId();
+  const login = getCurrentUserLogin();
   const headers = { 'Content-Type': 'application/json' };
   if (lmsCookie) headers['x-lms-cookie'] = lmsCookie;
   if (sessionId) headers['x-session-id'] = sessionId;
+  if (login) headers['x-lms-login'] = login;
   return headers;
 };
 

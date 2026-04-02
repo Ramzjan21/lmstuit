@@ -64,7 +64,7 @@ const requireSession = (req, res, next) => {
   if (!session?.lmsCookie) {
     const lmsCookie = req.headers['x-lms-cookie'];
     if (lmsCookie) {
-      const login = req.session?.lmsUser?.login || 'unknown';
+      const login = req.headers['x-lms-login'] || req.session?.lmsUser?.login || 'unknown';
       const { sid, session: newSession } = createSession({
         lmsCookie,
         lmsUser: { login, name: login }
