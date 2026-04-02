@@ -106,6 +106,31 @@ const fetchPage = async (cookie, path, headers = {}) => {
   return response.data;
 };
 
+export const fetchFileBuffer = async (cookie, urlPath) => {
+  requireCookie(cookie);
+  const client = createClient(cookie);
+  const response = await client.get(urlPath, {
+    responseType: 'arraybuffer'
+  });
+  
+  if (response.status === 301 || response.status === 302 || response.status === 303) {
+    const error = new Error('Session expired');
+    error.status = 401;
+    throw error;
+  }
+  if (response.status >= 400) {
+    throw new Error(`File download failed: ${response.status}`);
+  }
+
+  const contentDisposition = response.headers['content-disposition'];
+  let filename = 'task_file';
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match) filename = match[1];
+  }
+  return { buffer: Buffer.from(response.data), filename };
+};
+
 export const loginLms = async (login, password) => {
   const client = createClient();
 

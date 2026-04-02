@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview, TelegramUser } from './models.mjs';
-import { initBot, checkAndNotifyAll, startTaskReminder, stopTaskReminder, sendMessage, registerLinkToken, consumeLinkToken, getBotUsername } from './telegramBot.mjs';
+import { initBot, checkAndNotifyAll, startTaskReminder, stopTaskReminder, sendMessage, sendDocument, registerLinkToken, consumeLinkToken, getBotUsername } from './telegramBot.mjs';
 import {
   fetchAcademicBundle,
   fetchCourses,
@@ -14,7 +14,8 @@ import {
   fetchProfile,
   fetchSchedule,
   fetchStudyPlan,
-  loginLms
+  loginLms,
+  fetchFileBuffer
 } from './lmsClient.mjs';
 
 const PORT = Number(process.env.PORT || 3030);
@@ -671,6 +672,34 @@ app.post('/api/telegram/remind-task', requireSession, async (req, res) => {
     await startTaskReminder(tgUser.chatId, task, tgUser.lang);
     res.json({ ok: true });
   } catch (err) { sendError(res, err); }
+});
+
+// Download and send task file to telegram
+app.post('/api/telegram/send-task-file', requireSession, async (req, res) => {
+  try {
+    const { link, title } = req.body;
+    const userEmail = req.session.lmsUser?.login;
+    
+    if (!link) return res.status(400).json({ error: 'link majburiy' });
+    if (!isMongoConnected) return res.json({ ok: false, reason: 'db_disconnected' });
+    
+    const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    if (!tgUser) return res.json({ ok: false, error: 'Telegram ulanmagan' });
+
+    // Download file from LMS
+    const { buffer, filename } = await fetchFileBuffer(req.session.lmsCookie, link);
+    
+    const caption = tgUser.lang === 'ru'
+      ? `📄 Файл задания: <b>${title || 'Без названия'}</b>`
+      : `📄 Vazifa fayli: <b>${title || 'Nomsiz'}</b>`;
+      
+    await sendDocument(tgUser.chatId, buffer, filename, caption);
+    
+    res.json({ ok: true });
+  } catch (err) { 
+    console.error('send-task-file error:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 // Stop task reminder (called when task is marked done or uploaded)

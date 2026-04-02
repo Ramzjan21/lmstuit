@@ -161,6 +161,16 @@ export const sendMessage = async (chatId, text) => {
   }
 };
 
+export const sendDocument = async (chatId, buffer, filename, caption = '') => {
+  if (!bot || !chatId || !buffer) return;
+  try {
+    const fileOptions = { filename, contentType: 'application/octet-stream' };
+    await bot.sendDocument(chatId, buffer, { caption, parse_mode: 'HTML' }, fileOptions);
+  } catch (err) {
+    console.error('[TG-BOT] sendDocument xatosi:', err.message);
+  }
+};
+
 export const checkAndNotifyAll = async (chatId, userEmail, grades, tasks, lang = 'uz') => {
   if (!bot || !chatId) return;
 
