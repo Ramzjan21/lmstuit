@@ -460,5 +460,7 @@ export const lmsService = {
     clearCreds();
     await removeKey('lms_user');
     clearBundleCache();
-  }
+  },
+  
+  getAuthHeaders
 };

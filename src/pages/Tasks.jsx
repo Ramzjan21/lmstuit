@@ -93,9 +93,13 @@ export default function Tasks({ user }) {
       const res = await fetch('/api/telegram/send-task-file', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: lmsService.getAuthHeaders(),
         body: JSON.stringify({ link: task.link, title: task.title })
       });
+      if (res.status === 401) {
+        window.dispatchEvent(new Event('lms-auth-failed'));
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         alert(t('tasks.sentToTg') || "Fayl Telegramga jo'natildi!");
@@ -114,7 +118,7 @@ export default function Tasks({ user }) {
       await fetch('/api/telegram/remind-task', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: lmsService.getAuthHeaders(),
         body: JSON.stringify({ task })
       });
       const updated = { ...remindedTasks, [task.id]: true };
