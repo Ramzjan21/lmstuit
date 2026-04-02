@@ -694,8 +694,8 @@ app.post('/api/telegram/send-task-file', requireSession, async (req, res) => {
     if (fileLinks.length === 0) {
       // It means this task doesn't have an attachment (just text description)
       const caption = tgUser.lang === 'ru'
-        ? `⚠️ В этом задании (<b>${title || 'Без названия'}</b>) нет файла.`
-        : `⚠️ Ushbu vazifada (<b>${title || 'Nomsiz'}</b>) biriktirilgan fayl yo'q. LMS'ga kirib o'qing.`;
+        ? `⚠️ В этом задании (<b>${title || 'Без названия'}</b>) нет распознаваемых файлов для скачивания.`
+        : `⚠️ Ushbu vazifa (<b>${title || 'Nomsiz'}</b>) bo'yicha bot fayl aniqlay olmadi yoxud u matn ko'rinishida berilgan. LMS orqali o'qib ko'ring.`;
       await sendMessage(tgUser.chatId, caption);
       return res.json({ ok: true, message: 'no_file' });
     }

@@ -133,15 +133,38 @@ export const fetchFileBuffer = async (cookie, urlPath) => {
 
 export const fetchTaskAttachmentLinks = async (cookie, taskUrl) => {
   const html = await fetchPage(cookie, taskUrl);
-  // Find all file download links inside the page
-  const matches = Array.from(html.matchAll(/href="(https:\/\/lms\.tuit\.uz\/[^"]*download[^"]*)"/ig));
+  const matches1 = Array.from(html.matchAll(/href="([^"]+)"/ig));
+  const matches2 = Array.from(html.matchAll(/href='([^']+)'/ig));
+  const matches = [...matches1, ...matches2];
   const links = new Set();
+  
   for (const match of matches) {
-    if (!match[1].includes('play.google') && !match[1].includes('apple.com')) {
-      links.add(match[1]);
+    let url = match[1];
+    const lower = url.toLowerCase();
+    
+    // Broad match for any file link
+    const isFile = 
+      lower.includes('/download') || 
+      lower.includes('/file') ||
+      lower.includes('storage') ||
+      lower.includes('upload') ||
+      lower.includes('attachment') ||
+      lower.match(/\.(pdf|docx?|pptx?|xlsx?|zip|rar|7z|txt|rtf|jpeg|jpg|png)$/);
+
+    if (isFile && !lower.includes('play.google') && !lower.includes('apple.com') && !lower.includes('.css') && !lower.includes('.js')) {
+      if (url.startsWith('/')) {
+        url = `https://lms.tuit.uz${url}`;
+      } else if (!url.startsWith('http')) {
+        continue; 
+      }
+      if (url !== taskUrl && !url.endsWith('/tasks') && !url.includes('student/profile')) {
+        links.add(url);
+      }
     }
   }
-  return Array.from(links);
+  
+  // Return max 5 attachments to prevent spamming Telegram
+  return Array.from(links).slice(0, 5);
 };
 
 export const loginLms = async (login, password) => {
