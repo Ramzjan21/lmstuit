@@ -131,7 +131,9 @@ export const fetchFileBuffer = async (cookie, urlPath) => {
   return { buffer: Buffer.from(response.data), filename };
 };
 
-export const fetchTaskAttachmentLinks = async (cookie, taskUrl) => {
+export const fetchTaskAttachmentLinks = async (cookie, taskUrl, depth = 0) => {
+  if (depth > 1) return []; // limit recursion depth
+
   const html = await fetchPage(cookie, taskUrl);
   const matches1 = Array.from(html.matchAll(/href="([^"]+)"/ig));
   const matches2 = Array.from(html.matchAll(/href='([^']+)'/ig));
@@ -142,28 +144,39 @@ export const fetchTaskAttachmentLinks = async (cookie, taskUrl) => {
     let url = match[1];
     const lower = url.toLowerCase();
     
-    // Broad match for any file link
+    // Check if it's a file
     const isFile = 
       lower.includes('/download') || 
       lower.includes('/file') ||
       lower.includes('storage') ||
       lower.includes('upload') ||
       lower.includes('attachment') ||
-      lower.match(/\.(pdf|docx?|pptx?|xlsx?|zip|rar|7z|txt|rtf|jpeg|jpg|png)$/);
+      lower.includes('/dl/') ||
+      lower.match(/\.(pdf|docx?|pptx?|xlsx?|zip|rar|7z|txt|rtf|jpeg|jpg|png|mp4|webm)$/);
 
-    if (isFile && !lower.includes('play.google') && !lower.includes('apple.com') && !lower.includes('.css') && !lower.includes('.js')) {
+    const isTaskDetails = !isFile && (lower.includes('/task/') || lower.includes('/tasks/show'));
+
+    if ((isFile || isTaskDetails) && !lower.includes('play.google') && !lower.includes('apple.com') && !lower.includes('.css') && !lower.includes('.js')) {
       if (url.startsWith('/')) {
         url = `https://lms.tuit.uz${url}`;
       } else if (!url.startsWith('http')) {
         continue; 
       }
-      if (url !== taskUrl && !url.endsWith('/tasks') && !url.includes('student/profile')) {
-        links.add(url);
+      
+      if (url !== taskUrl && !url.includes('student/profile')) {
+        if (isFile) {
+          links.add(url);
+        } else if (isTaskDetails && depth === 0) {
+          // If we found a task details link on a course page, scrape THAT page for files!
+          try {
+            const nestedFiles = await fetchTaskAttachmentLinks(cookie, url, depth + 1);
+            nestedFiles.forEach(f => links.add(f));
+          } catch(e) {}
+        }
       }
     }
   }
   
-  // Return max 5 attachments to prevent spamming Telegram
   return Array.from(links).slice(0, 5);
 };
 

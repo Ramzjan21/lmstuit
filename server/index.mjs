@@ -692,7 +692,14 @@ app.post('/api/telegram/send-task-file', requireSession, async (req, res) => {
     const fileLinks = await fetchTaskAttachmentLinks(req.session.lmsCookie, link);
     
     if (fileLinks.length === 0) {
-      // It means this task doesn't have an attachment (just text description)
+      // DEBUG: write raw html to a file to inspect later
+      try {
+        const fs = await import('fs');
+        const { fetchPage } = await import('./lmsClient.mjs');
+        const rawHtml = await fetchPage(req.session.lmsCookie, link);
+        fs.writeFileSync('debug_lms_task.html', rawHtml, 'utf-8');
+      } catch (e) {}
+
       const caption = tgUser.lang === 'ru'
         ? `⚠️ В этом задании (<b>${title || 'Без названия'}</b>) нет распознаваемых файлов для скачивания.`
         : `⚠️ Ushbu vazifa (<b>${title || 'Nomsiz'}</b>) bo'yicha bot fayl aniqlay olmadi yoxud u matn ko'rinishida berilgan. LMS orqali o'qib ko'ring.`;
