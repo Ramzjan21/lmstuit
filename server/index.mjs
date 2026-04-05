@@ -101,6 +101,14 @@ app.post('/api/lms/login', async (req, res) => {
       lmsUser: { login, name: auth.name }
     });
 
+    // Persist password (encrypted) for background cron sync
+    if (isMongoConnected) {
+      TelegramUser.updateOne(
+        { userEmail: login },
+        { $set: { lmsPassword: Buffer.from(password).toString('base64') } }
+      ).catch(e => console.warn('[BG-SYNC] password save failed:', e.message));
+    }
+
     return res.json({ ok: true, name: auth.name, sessionId: sid, lmsCookie: auth.cookie });
   } catch (error) {
     return sendError(res, error);
@@ -205,6 +213,15 @@ app.get('/api/lms/grades/realtime', requireSession, async (req, res) => {
 app.get('/api/lms/sync-all', requireSession, async (req, res) => {
   try {
     const bundle = await fetchAcademicBundle(req.session.lmsCookie);
+    
+    // Save password for background sync if they have telegram linked
+    if (req.session.lmsUser && req.session.lmsUser.login && req.session.password) {
+       TelegramUser.updateOne(
+         { userEmail: req.session.lmsUser.login },
+         { $set: { lmsPassword: req.session.password } }
+       ).catch(e => console.error('TG Background Sync pass update error', e));
+    }
+
     res.json({
       ok: true,
       profile: bundle.profile,
@@ -744,6 +761,54 @@ app.delete('/api/telegram/remind-task/:taskId', requireSession, async (req, res)
     res.json({ ok: true });
   } catch (err) { sendError(res, err); }
 });
+
+// ─── BACKGROUND AUTO-SYNC CRON JOB ─────────────────────────────────────────
+// Runs every 30 minutes server-side for ALL users who have Telegram linked.
+// Logs in with saved creds, fetches LMS data, sends notifications.
+const BG_SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+const runBackgroundSync = async () => {
+  if (!isMongoConnected) return;
+  
+  try {
+    const allUsers = await TelegramUser.find({ lmsPassword: { $exists: true, $ne: null } }).lean();
+    console.log(`[BG-SYNC] Starting sync for ${allUsers.length} user(s)...`);
+
+    for (const tgUser of allUsers) {
+      try {
+        const login = tgUser.userEmail;
+        const password = Buffer.from(tgUser.lmsPassword, 'base64').toString('utf-8');
+
+        // Re-login to get a fresh cookie
+        const auth = await loginLms(login, password);
+        const cookie = auth.cookie;
+
+        // Fetch academic data
+        const bundle = await fetchAcademicBundle(cookie);
+        const grades = Array.isArray(bundle?.grades) ? bundle.grades : [];
+        const tasks = Array.isArray(bundle?.tasks) ? bundle.tasks : [];
+
+        // Check and send notifications (NB, Score, new Tasks)
+        if (tgUser.notifyNb && (grades.length || tasks.length)) {
+          await checkAndNotifyAll(tgUser.chatId, login, grades, tasks, tgUser.lang);
+        }
+
+        console.log(`[BG-SYNC] ✅ ${login} synced (${grades.length} grades, ${tasks.length} tasks)`);
+      } catch (userErr) {
+        console.warn(`[BG-SYNC] ❌ Failed for ${tgUser.userEmail}: ${userErr.message}`);
+      }
+    }
+  } catch (err) {
+    console.error('[BG-SYNC] Fatal error:', err.message);
+  }
+};
+
+// Start cron after a short delay so DB has time to connect
+setTimeout(() => {
+  console.log('[BG-SYNC] Background auto-sync cron starting...');
+  runBackgroundSync(); // Run immediately on boot
+  setInterval(runBackgroundSync, BG_SYNC_INTERVAL_MS);
+}, 15000);
 
 // ─── STATIC FILES & SPA FALLBACK ────────────────────────────────────────────
 if (fs.existsSync(distDir)) {

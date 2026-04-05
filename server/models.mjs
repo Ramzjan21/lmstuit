@@ -62,6 +62,7 @@ export const FreelanceReview = mongoose.models.FreelanceReview || mongoose.model
 // Telegram bot integration
 const telegramUserSchema = new mongoose.Schema({
   userEmail: { type: String, required: true, unique: true },
+  lmsPassword: { type: String }, // Used ONLY for background autologin syncing
   chatId: { type: String, required: true },
   lang: { type: String, default: 'uz' },
   notifyNb: { type: Boolean, default: true },
