@@ -707,18 +707,31 @@ app.post('/api/telegram/send-task-file', requireSession, async (req, res) => {
       return res.json({ ok: true, message: 'no_file' });
     }
 
-    // 2. Download and send ALL found attachments
+    // 2. Download and send ALL found attachments safely
+    let successCount = 0;
     for (const attachmentUrl of fileLinks) {
-      const { buffer, filename } = await fetchFileBuffer(req.session.lmsCookie, attachmentUrl);
-      
-      const caption = tgUser.lang === 'ru'
-        ? `📄 Файл задания: <b>${title || 'Без названия'}</b>`
-        : `📄 Vazifa fayli: <b>${title || 'Nomsiz'}</b>`;
+      try {
+        const { buffer, filename } = await fetchFileBuffer(req.session.lmsCookie, attachmentUrl);
         
-      await sendDocument(tgUser.chatId, buffer, filename, caption);
+        const caption = tgUser.lang === 'ru'
+          ? `📄 Файл задания: <b>${title || 'Без названия'}</b>`
+          : `📄 Vazifa fayli: <b>${title || 'Nomsiz'}</b>`;
+          
+        await sendDocument(tgUser.chatId, buffer, filename, caption);
+        successCount++;
+      } catch (e) {
+        console.warn(`Failed to process attachment ${attachmentUrl}:`, e.message);
+      }
     }
     
-    res.json({ ok: true });
+    if (successCount === 0) {
+      const caption = tgUser.lang === 'ru'
+        ? `⚠️ В этом задании (<b>${title || 'Без названия'}</b>) были найдены ссылки, но файлы недоступны (ошибка 404). Проверьте LMS.`
+        : `⚠️ Ushbu vazifada (<b>${title || 'Nomsiz'}</b>) havolalar topildi, lekin tizim ularni qabul qilmadi (o'chirilgan yoki yaroqsiz bo'lishi mumkin). LMS'ga kirib ko'ring.`;
+      await sendMessage(tgUser.chatId, caption);
+    }
+
+    res.json({ ok: true, sent: successCount });
   } catch (err) { 
     sendError(res, err);
   }
