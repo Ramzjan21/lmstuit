@@ -382,8 +382,8 @@ export default function Tasks({ user }) {
                                       {countdownLabel(task.deadline, t, isPast)}
                                     </span>
                                     {isPast && currentScore !== null && (
-                                      <span style={{ fontSize: '11px', fontWeight: 700, color: scoreColor(currentScore / 100), background: 'rgba(0,0,0,0.2)', padding: '2px 7px', borderRadius: '8px' }}>
-                                        🎯 {currentScore}/100 ball
+                                      <span style={{ fontSize: '11px', fontWeight: 700, color: scoreColor((task.maxScore || task.max_score) ? (currentScore / (task.maxScore || task.max_score)) : (currentScore / 100)), background: 'rgba(0,0,0,0.2)', padding: '2px 7px', borderRadius: '8px' }}>
+                                        🎯 {currentScore}/{task.maxScore || task.max_score || 100} ball
                                       </span>
                                     )}
                                   </>
