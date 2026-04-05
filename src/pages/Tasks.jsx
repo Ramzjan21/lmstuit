@@ -16,12 +16,12 @@ const categoryToCanonical = (label = '') => {
   return 'homework';
 };
 
-const countdownLabel = (iso, t) => {
+const countdownLabel = (iso, t, isExpired) => {
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return t('tasks.noTime');
 
   const diff = target - Date.now();
-  if (diff <= 0) return t('tasks.expired');
+  if (diff <= 0) return isExpired ? t('tasks.submitted') || 'Topshirilgan' : t('tasks.expired');
 
   const minutes = Math.floor(diff / (1000 * 60));
   if (minutes < 60) return t('tasks.leftMinutes', { value: minutes });
@@ -31,6 +31,12 @@ const countdownLabel = (iso, t) => {
 
   const days = Math.floor(hours / 24);
   return t('tasks.leftDays', { d: days, h: hours % 24 });
+};
+
+const scoreColor = (ratio) => {
+  if (ratio >= 0.8) return 'var(--success)';
+  if (ratio >= 0.5) return 'var(--warning)';
+  return 'var(--danger)';
 };
 
 const priorityColor = (priority = 'medium') => {
@@ -64,6 +70,7 @@ const canonicalToLabel = (canonical, t) => {
 export default function Tasks({ user }) {
   const { t, lang } = useI18n();
   const [tasks, setTasks] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [grouped, setGrouped] = useState([]);
   const [activeSemester, setActiveSemester] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -133,10 +140,13 @@ export default function Tasks({ user }) {
   const loadData = async () => {
     if (!user) return;
 
-    const [storedTasks, syncData] = await Promise.all([
+    const [storedTasks, storedGrades, syncData] = await Promise.all([
       getJson(`tasks_${user.email}`, []),
+      getJson(`grades_${user.email}`, []),
       getJson(`lms_last_sync_${user.email}`, null)
     ]);
+
+    setGrades(Array.isArray(storedGrades) ? storedGrades : []);
 
     const lmsTasks = (Array.isArray(storedTasks) ? storedTasks : []).filter((task) => task.source === 'lms');
     const normalized = lmsTasks
@@ -357,9 +367,29 @@ export default function Tasks({ user }) {
                               <p className="font-semibold text-sm">{task.title}</p>
                               <p className="text-xs text-secondary mt-1">{canonicalToLabel(categoryToCanonical(task.category || ''), t)}</p>
                             </div>
-                            <span className="text-xs" style={{ color: priorityColor(task.priority), fontWeight: 700 }}>
-                              {countdownLabel(task.deadline, t)}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                              {(() => {
+                                const isPast = task.deadline && new Date(task.deadline) <= new Date();
+                                const subjectKey = (task.subject || '').toLowerCase().trim().slice(0, 20);
+                                const matchedGrade = grades.find(g => {
+                                  const gName = (g.name || '').toLowerCase().trim();
+                                  return gName && subjectKey && (gName.includes(subjectKey) || subjectKey.includes(gName.slice(0, 20)));
+                                });
+                                const currentScore = matchedGrade?.score ?? null;
+                                return (
+                                  <>
+                                    <span className="text-xs" style={{ color: isPast ? 'var(--success)' : priorityColor(task.priority), fontWeight: 700 }}>
+                                      {countdownLabel(task.deadline, t, isPast)}
+                                    </span>
+                                    {isPast && currentScore !== null && (
+                                      <span style={{ fontSize: '11px', fontWeight: 700, color: scoreColor(currentScore / 100), background: 'rgba(0,0,0,0.2)', padding: '2px 7px', borderRadius: '8px' }}>
+                                        🎯 {currentScore}/100 ball
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </div>
 
                           <p className="text-xs text-secondary mt-2 flex-center" style={{ justifyContent: 'flex-start', gap: '6px' }}>
