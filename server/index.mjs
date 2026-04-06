@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview, TelegramUser } from './models.mjs';
+import { Teacher, Review, LeaderboardUser, Freelancer, FreelanceReview, TelegramUser, User } from './models.mjs';
 import { initBot, checkAndNotifyAll, startTaskReminder, stopTaskReminder, sendMessage, sendDocument, registerLinkToken, consumeLinkToken, getBotUsername } from './telegramBot.mjs';
 import {
   fetchAcademicBundle,
@@ -101,8 +101,27 @@ app.post('/api/lms/login', async (req, res) => {
       lmsUser: { login, name: auth.name }
     });
 
-    // Persist password (encrypted) for background cron sync
+    // Create or update user in MongoDB to prevent duplicates
     if (isMongoConnected) {
+      try {
+        await User.findOneAndUpdate(
+          { lmsLogin: login },
+          { 
+            name: auth.name,
+            lastLoginAt: new Date()
+          },
+          { 
+            upsert: true, // Create if doesn't exist
+            new: true,
+            setDefaultsOnInsert: true
+          }
+        );
+        console.log(`[USER] ${login} logged in (user record synced)`);
+      } catch (dbError) {
+        console.warn('[USER] Failed to sync user record:', dbError.message);
+      }
+
+      // Persist password (encrypted) for background cron sync
       TelegramUser.updateOne(
         { userEmail: login },
         { $set: { lmsPassword: Buffer.from(password).toString('base64') } }

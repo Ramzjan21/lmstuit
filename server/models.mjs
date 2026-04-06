@@ -72,3 +72,13 @@ const telegramUserSchema = new mongoose.Schema({
 });
 
 export const TelegramUser = mongoose.models.TelegramUser || mongoose.model('TelegramUser', telegramUserSchema);
+
+// Web app user (for preventing duplicates across devices)
+const userSchema = new mongoose.Schema({
+  lmsLogin: { type: String, required: true, unique: true }, // LMS login (unique identifier)
+  name: { type: String, required: true },
+  lastLoginAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
+});
+
+export const User = mongoose.models.User || mongoose.model('User', userSchema);
