@@ -494,60 +494,11 @@ export default function Freelance({ user }) {
                 </button>
               </form>
             </div>
- 
-               <form onSubmit={submitReview} className="flex-column gap-3 mt-2">
-                 <div>
-                   <textarea
-                     placeholder={t('freelance.reviewPlaceholder')}
-                     value={newReview} 
-                     onChange={(e) => {
-                       setNewReview(e.target.value);
-                       setReviewError('');
-                     }} 
-                     disabled={submitting} 
-                     rows="4"
-                     className={`tg-input ${reviewError ? 'error' : ''}`}
-                     style={{ resize: 'none' }}
-                     maxLength={500}
-                   />
-                   <div className="flex-between mt-1" style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                     <span>{newReview.length}/500</span>
-                     {reviewError && (
-                       <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
-                         {reviewError}
-                       </span>
-                     )}
-                   </div>
-                 </div>
-                 <button
-                   type="submit" disabled={submitting || !newReview.trim() || newRating === 0}
-                   className="flex-center"
-                   style={{
-                     width: '100%', height: '50px',
-                     background: (!newReview.trim() || newRating === 0) ? 'var(--bg-card)' : 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-                     border: 'none', borderRadius: '14px', color: '#1a1a1a', fontWeight: 'bold', fontSize: '15px',
-                     cursor: (!newReview.trim() || newRating === 0) ? 'not-allowed' : 'pointer', transition: '0.2s',
-                     boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.4)'
-                   }}
-                 >
-                   {submitting ? (
-                     <>
-                       <div className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
-                       {lang === 'ru' ? 'Отправка...' : 'Yuborilmoqda...'}
-                     </>
-                   ) : (
-                     <>
-                       {t('freelance.submitReview')} <Send size={18} style={{ marginLeft: '8px' }} />
-                     </>
-                   )}
-                 </button>
-               </form>
-             </div>
-           </div>
-         </div>
-       )}
+          </div>
+        </div>
+      )}
 
-       {/* Add your Ad modal */}
+      {/* Add your Ad modal */}
        {showAddModal && (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
