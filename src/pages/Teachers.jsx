@@ -126,7 +126,7 @@ export default function Teachers({ user }) {
   const rest = sortedTeachers.slice(3);
 
   return (
-    <div style={{ paddingBottom: '20px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ paddingBottom: '20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       
       {/* Header */}
       <div className="flex-between mb-2">
@@ -156,10 +156,10 @@ export default function Teachers({ user }) {
         <>
           {/* Podium */}
           {top3.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '10px', marginTop: '10px', marginBottom: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '10px', marginTop: '10px', marginBottom: '30px', position: 'relative' }}>
               {/* 2nd Place */}
               {top3[1] && (
-                <div onClick={() => openTeacher(top3[1])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', paddingBottom: '10px' }}>
+                <div onClick={() => openTeacher(top3[1])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', paddingBottom: '10px', transform: 'none' }}>
                   <div style={{ position: 'relative', width: 70, height: 70 }}>
                     <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: "var(--text-primary)", border: '3px solid #0ea5e9', boxShadow: '0 0 15px rgba(14,165,233,0.3)' }}>
                       {getInitials(top3[1].name)}
@@ -173,7 +173,7 @@ export default function Teachers({ user }) {
 
               {/* 1st Place */}
               {top3[0] && (
-                <div onClick={() => openTeacher(top3[0])} style={{ flex: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', zIndex: 10 }}>
+                <div onClick={() => openTeacher(top3[0])} style={{ flex: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', zIndex: 10, transform: 'none' }}>
                   <Crown size={32} color="#facc15" style={{ marginBottom: '-6px', filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))', zIndex: 2 }} />
                   <div style={{ position: 'relative', width: 90, height: 90 }}>
                     <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #facc15, #fef08a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', fontWeight: 'bold', color: '#1a1a1a', border: '3px solid #facc15', boxShadow: '0 0 20px rgba(250,204,21,0.4)' }}>
@@ -188,7 +188,7 @@ export default function Teachers({ user }) {
 
               {/* 3rd Place */}
               {top3[2] && (
-                <div onClick={() => openTeacher(top3[2])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', paddingBottom: '10px' }}>
+                <div onClick={() => openTeacher(top3[2])} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', position: 'relative', paddingBottom: '10px', transform: 'none' }}>
                   <div style={{ position: 'relative', width: 70, height: 70 }}>
                     <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #34d399)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: "var(--text-primary)", border: '3px solid #10b981', boxShadow: '0 0 15px rgba(16,185,129,0.3)' }}>
                       {getInitials(top3[2].name)}
