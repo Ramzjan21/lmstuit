@@ -338,10 +338,10 @@ export default function Teachers({ user }) {
                 </div>
                 {newRating > 0 && (
                   <p className="text-center text-xs mt-2" style={{ color: '#f59e0b', fontWeight: 600 }}>
-                    {newRating === 5 && "⭐ A'lo!"}
+                    {newRating === 5 && <>⭐ A&apos;lo!</>}
                     {newRating === 4 && '👍 Yaxshi!'}
                     {newRating === 3 && '👌 Qoniqarli'}
-                    {newRating === 2 && "😐 O'rtacha"}
+                    {newRating === 2 && <>😐 O&apos;rtacha</>}
                     {newRating === 1 && '😞 Yomon'}
                   </p>
                 )}
