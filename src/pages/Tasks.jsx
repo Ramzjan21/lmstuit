@@ -83,14 +83,6 @@ export default function Tasks({ user }) {
 
   const allLabel = t('tasks.categories.all');
 
-  const downloadTaskFile = async (task) => {
-    if (!task.link) return;
-    try {
-      // Open LMS link to download
-      window.open(task.link, '_blank');
-    } catch(e) {}
-  };
-
   const [downloadingToTg, setDownloadingToTg] = useState({});
 
   const sendFileToTelegram = async (task) => {
@@ -436,24 +428,16 @@ export default function Tasks({ user }) {
                             </div>
                           )}
 
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
                             {!!task.link && (
-                              <>
-                                <button
-                                  onClick={() => downloadTaskFile(task)}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,209,255,0.12)', border: '1px solid rgba(0,209,255,0.2)', borderRadius: '8px', padding: '6px 10px', color: 'var(--info)', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
-                                >
-                                  <Download size={12} /> {t('tasks.openLms') || 'Ochish'}
-                                </button>
-                                <button
-                                  onClick={() => sendFileToTelegram(task)}
-                                  disabled={downloadingToTg[task.id]}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', padding: '6px 10px', color: '#10b981', cursor: downloadingToTg[task.id] ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
-                                >
-                                  {downloadingToTg[task.id] ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
-                                  {downloadingToTg[task.id] ? 'Yuborilmoqda...' : 'Botga tashlash'}
-                                </button>
-                              </>
+                              <button
+                                onClick={() => sendFileToTelegram(task)}
+                                disabled={downloadingToTg[task.id]}
+                                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', padding: '6px 10px', color: '#10b981', cursor: downloadingToTg[task.id] ? 'not-allowed' : 'pointer', fontSize: '12px', fontFamily: 'inherit' }}
+                              >
+                                {downloadingToTg[task.id] ? <RefreshCw size={12} className="animate-spin" /> : <Download size={12} />}
+                                {downloadingToTg[task.id] ? 'Yuklanmoqda...' : 'Faylni yuklash'}
+                              </button>
                             )}
                             {!remindedTasks[task.id] && !task.completed && task.deadline && new Date(task.deadline) > new Date() && (
                               <button
