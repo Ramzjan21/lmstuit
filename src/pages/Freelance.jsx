@@ -428,7 +428,11 @@ export default function Freelance({ user }) {
                 </div>
                 {newRating > 0 && (
                   <p className="text-center text-xs mt-2" style={{ color: '#f59e0b', fontWeight: 600 }}>
-                    {newRating === 5 ? "⭐ A'lo!" : newRating === 4 ? '👍 Yaxshi!' : newRating === 3 ? '👌 Qoniqarli' : newRating === 2 ? "😐 O'rtacha" : '😞 Yomon'}
+                    {newRating === 5 && "⭐ A'lo!"}
+                    {newRating === 4 && '👍 Yaxshi!'}
+                    {newRating === 3 && '👌 Qoniqarli'}
+                    {newRating === 2 && "😐 O'rtacha"}
+                    {newRating === 1 && '😞 Yomon'}
                   </p>
                 )}
               </div>
