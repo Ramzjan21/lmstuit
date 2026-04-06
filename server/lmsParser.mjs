@@ -412,6 +412,45 @@ export const parseCourseDetail = (html = '', fallback = {}) => {
   };
 };
 
+export const parseTaskDetail = (html = '') => {
+  const text = stripHtml(html);
+  
+  // Parse maximum score (max ball)
+  // Patterns: "Ball: 10", "Maksimal ball: 20", "Max score: 100", "Балл: 50"
+  const maxScoreMatch = text.match(/(?:maksimal\s+ball|max(?:imum)?\s+(?:ball|score|балл)|ball\s*:\s*|балл\s*:\s*)(\d{1,3})/i);
+  const maxScore = parseNumber(maxScoreMatch?.[1], null);
+  
+  // Parse student's score (olingan ball)
+  // Patterns: "Sizning ballingiz: 8", "Your score: 15", "Ваш балл: 20", "Olingan: 10"
+  const studentScoreMatch = text.match(/(?:sizning\s+ball(?:ingiz)?|your\s+score|ваш\s+балл|olingan(?:\s+ball)?|получено)\s*:?\s*(\d{1,3})/i);
+  const studentScore = parseNumber(studentScoreMatch?.[1], null);
+  
+  // Parse submission status
+  // Patterns: "Topshirilgan", "Submitted", "Сдано", "Bajarildi"
+  const submitted = /topshirilgan|submitted|сдано|bajarildi|yuklangan|uploaded/i.test(text);
+  
+  // Parse submission date if available
+  const submittedAtMatch = text.match(/(?:topshirilgan|submitted|сдано)\s*:?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?:\s+\d{1,2}:\d{2})?)/i);
+  const submittedAt = submittedAtMatch?.[1] || null;
+  
+  // Parse teacher comment/feedback
+  const commentMatch = html.match(/<div[^>]*(?:class|id)="[^"]*(?:comment|feedback|izoh|комментарий)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+  const comment = commentMatch ? stripHtml(commentMatch[1]).trim() : null;
+  
+  // Parse grade/status (A, B, C, etc. or "Qoniqarli", "Yaxshi", etc.)
+  const gradeMatch = text.match(/(?:baho|grade|оценка)\s*:?\s*([A-F]|qoniqarli|yaxshi|a'lo|отлично|хорошо|удовлетворительно)/i);
+  const grade = gradeMatch?.[1] || null;
+  
+  return {
+    maxScore: maxScore !== null ? Math.max(1, Math.min(1000, maxScore)) : null,
+    score: studentScore !== null ? Math.max(0, Math.min(maxScore || 1000, studentScore)) : null,
+    submitted,
+    submittedAt,
+    comment: comment && comment.length > 5 ? comment : null,
+    grade
+  };
+};
+
 const detectSemesterToken = (text = '') => {
   const normalized = stripHtml(text).toLowerCase();
   const roman = stripHtml(text).toUpperCase().match(/\b([IVX]{1,4})\s*[- ]*СЕМЕСТР/i)?.[1];

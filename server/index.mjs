@@ -141,7 +141,9 @@ app.get('/api/lms/schedule', requireSession, async (req, res) => {
 
 app.get('/api/lms/deadlines', requireSession, async (req, res) => {
   try {
-    const tasks = await fetchDeadlines(req.session.lmsCookie);
+    // Check if client wants enriched details (default: true)
+    const enrichDetails = req.query.enrich !== 'false';
+    const tasks = await fetchDeadlines(req.session.lmsCookie, enrichDetails);
     res.json({ ok: true, tasks });
   } catch (error) {
     sendError(res, error);
@@ -212,7 +214,9 @@ app.get('/api/lms/grades/realtime', requireSession, async (req, res) => {
 
 app.get('/api/lms/sync-all', requireSession, async (req, res) => {
   try {
-    const bundle = await fetchAcademicBundle(req.session.lmsCookie);
+    // Check if client wants enriched task details (default: true)
+    const enrichTaskDetails = req.query.enrichTasks !== 'false';
+    const bundle = await fetchAcademicBundle(req.session.lmsCookie, enrichTaskDetails);
     
     // Save password for background sync if they have telegram linked
     if (req.session.lmsUser && req.session.lmsUser.login && req.session.password) {
@@ -783,8 +787,8 @@ const runBackgroundSync = async () => {
         const auth = await loginLms(login, password);
         const cookie = auth.cookie;
 
-        // Fetch academic data
-        const bundle = await fetchAcademicBundle(cookie);
+        // Fetch academic data (without task details for faster sync)
+        const bundle = await fetchAcademicBundle(cookie, false);
         const grades = Array.isArray(bundle?.grades) ? bundle.grades : [];
         const tasks = Array.isArray(bundle?.tasks) ? bundle.tasks : [];
 

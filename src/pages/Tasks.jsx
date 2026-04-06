@@ -370,20 +370,46 @@ export default function Tasks({ user }) {
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                               {(() => {
                                 const isPast = task.deadline && new Date(task.deadline) <= new Date();
+                                
+                                // Use task-specific score if available (from LMS task detail page)
+                                const hasTaskScore = task.score !== null && task.score !== undefined;
+                                const taskMaxScore = task.maxScore || 100;
+                                const taskScore = task.score || 0;
+                                
+                                // Fallback: try to match with subject grades (old behavior)
                                 const subjectKey = (task.subject || '').toLowerCase().trim().slice(0, 20);
                                 const matchedGrade = grades.find(g => {
                                   const gName = (g.name || '').toLowerCase().trim();
                                   return gName && subjectKey && (gName.includes(subjectKey) || subjectKey.includes(gName.slice(0, 20)));
                                 });
-                                const currentScore = matchedGrade?.score ?? null;
+                                const subjectScore = matchedGrade?.score ?? null;
+                                
+                                // Determine which score to display
+                                const displayScore = hasTaskScore ? taskScore : subjectScore;
+                                const displayMaxScore = hasTaskScore ? taskMaxScore : 100;
+                                const scoreRatio = displayMaxScore > 0 ? (displayScore / displayMaxScore) : 0;
+                                
                                 return (
                                   <>
                                     <span className="text-xs" style={{ color: isPast ? 'var(--success)' : priorityColor(task.priority), fontWeight: 700 }}>
                                       {countdownLabel(task.deadline, t, isPast)}
                                     </span>
-                                    {isPast && currentScore !== null && (
-                                      <span style={{ fontSize: '11px', fontWeight: 700, color: scoreColor((task.maxScore || task.max_score) ? (currentScore / (task.maxScore || task.max_score)) : (currentScore / 100)), background: 'rgba(0,0,0,0.2)', padding: '2px 7px', borderRadius: '8px' }}>
-                                        🎯 {currentScore}/{task.maxScore || task.max_score || 100} ball
+                                    {isPast && displayScore !== null && (
+                                      <span style={{ 
+                                        fontSize: '11px', 
+                                        fontWeight: 700, 
+                                        color: scoreColor(scoreRatio), 
+                                        background: 'rgba(0,0,0,0.2)', 
+                                        padding: '2px 7px', 
+                                        borderRadius: '8px' 
+                                      }}>
+                                        🎯 {displayScore}/{displayMaxScore} ball
+                                        {hasTaskScore && task.submitted && ' ✓'}
+                                      </span>
+                                    )}
+                                    {task.submitted && !isPast && (
+                                      <span style={{ fontSize: '10px', color: 'var(--success)' }}>
+                                        ✓ Topshirilgan
                                       </span>
                                     )}
                                   </>
@@ -395,6 +421,28 @@ export default function Tasks({ user }) {
                           <p className="text-xs text-secondary mt-2 flex-center" style={{ justifyContent: 'flex-start', gap: '6px' }}>
                             <Clock size={12} /> {t('tasks.deadline')}: {formatDateTime(task.deadline, lang)}
                           </p>
+
+                          {task.comment && (
+                            <div className="mt-2 p-2" style={{ background: 'rgba(0,209,255,0.08)', borderRadius: '6px', borderLeft: '2px solid var(--info)' }}>
+                              <p className="text-xs" style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                💬 {task.comment}
+                              </p>
+                            </div>
+                          )}
+
+                          {task.grade && (
+                            <div className="mt-2">
+                              <span className="text-xs" style={{ 
+                                background: 'rgba(34,197,94,0.12)', 
+                                color: 'var(--success)', 
+                                padding: '3px 8px', 
+                                borderRadius: '6px',
+                                fontWeight: 600
+                              }}>
+                                📊 Baho: {task.grade}
+                              </span>
+                            </div>
+                          )}
 
                           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                             {!!task.link && (

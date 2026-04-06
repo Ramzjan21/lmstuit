@@ -11,7 +11,8 @@ import {
   parseProfile,
   parseScheduleEvents,
   parseStudyPlan,
-  parseDashboardName
+  parseDashboardName,
+  parseTaskDetail
 } from './lmsParser.mjs';
 
 const LMS_URL = 'https://lms.tuit.uz';
@@ -131,6 +132,24 @@ export const fetchFileBuffer = async (cookie, urlPath) => {
   return { buffer: Buffer.from(response.data), filename };
 };
 
+export const fetchTaskDetail = async (cookie, taskUrl) => {
+  try {
+    requireCookie(cookie);
+    const html = await fetchPage(cookie, taskUrl);
+    return parseTaskDetail(html);
+  } catch (error) {
+    console.warn(`Failed to fetch task detail from ${taskUrl}:`, error.message);
+    return {
+      maxScore: null,
+      score: null,
+      submitted: false,
+      submittedAt: null,
+      comment: null,
+      grade: null
+    };
+  }
+};
+
 export const fetchTaskAttachmentLinks = async (cookie, taskUrl, depth = 0) => {
   if (depth > 1) return []; // limit recursion depth
 
@@ -226,9 +245,41 @@ export const fetchSchedule = async (cookie) => {
   return parseScheduleEvents(parseCalendarJson(html));
 };
 
-export const fetchDeadlines = async (cookie) => {
+export const fetchDeadlines = async (cookie, enrichWithDetails = true) => {
   const html = await fetchPage(cookie, '/student/deadlines');
-  return parseDeadlineEvents(parseCalendarJson(html));
+  const tasks = parseDeadlineEvents(parseCalendarJson(html));
+  
+  // If enrichWithDetails is false, return basic tasks without fetching details
+  if (!enrichWithDetails) {
+    return tasks;
+  }
+  
+  // Fetch detailed information for each task (max 20 tasks to avoid timeout)
+  const tasksToEnrich = tasks.slice(0, 20);
+  const enrichedTasks = await Promise.all(
+    tasksToEnrich.map(async (task) => {
+      if (!task.link) return task;
+      
+      try {
+        const details = await fetchTaskDetail(cookie, task.link);
+        return {
+          ...task,
+          maxScore: details.maxScore,
+          score: details.score,
+          submitted: details.submitted,
+          submittedAt: details.submittedAt,
+          comment: details.comment,
+          grade: details.grade
+        };
+      } catch (error) {
+        console.warn(`Failed to enrich task ${task.id}:`, error.message);
+        return task;
+      }
+    })
+  );
+  
+  // Return enriched tasks + remaining tasks without details
+  return [...enrichedTasks, ...tasks.slice(20)];
 };
 
 export const fetchStudyPlan = async (cookie) => {
@@ -326,15 +377,17 @@ export const fetchCourses = async (cookie) => {
   }));
 };
 
-export const fetchAcademicBundle = async (cookie) => {
-  const [profile, schedule, deadlines, studyPlan, finals, courses] = await Promise.all([
+export const fetchAcademicBundle = async (cookie, enrichTaskDetails = true) => {
+  const [profile, schedule, studyPlan, finals, courses] = await Promise.all([
     fetchProfile(cookie),
     fetchSchedule(cookie),
-    fetchDeadlines(cookie),
     fetchStudyPlan(cookie),
     fetchFinals(cookie),
     fetchCourses(cookie)
   ]);
+  
+  // Fetch deadlines separately to control detail enrichment
+  const deadlines = await fetchDeadlines(cookie, enrichTaskDetails);
 
   return buildAcademicBundle({
     profile,
