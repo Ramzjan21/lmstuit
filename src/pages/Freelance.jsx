@@ -22,6 +22,8 @@ export default function Freelance({ user }) {
   const [formDesc, setFormDesc] = useState('');
   const [formPrice, setFormPrice] = useState('');
   const [formContact, setFormContact] = useState('');
+  const [formError, setFormError] = useState('');
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
     fetchFreelancers();
@@ -54,11 +56,31 @@ export default function Freelance({ user }) {
   const closeProfile = () => {
     setSelectedProfile(null);
     setReviews([]);
+    setNewReview('');
+    setNewRating(0);
+    setReviewError('');
   };
 
   const submitReview = async (e) => {
     e.preventDefault();
-    if (!newReview.trim() || newRating === 0) return;
+    setReviewError('');
+    
+    // Validation
+    if (newRating === 0) {
+      setReviewError(lang === 'ru' ? 'Пожалуйста, выберите рейтинг' : 'Iltimos, reyting tanlang');
+      return;
+    }
+    
+    if (!newReview.trim()) {
+      setReviewError(lang === 'ru' ? 'Пожалуйста, напишите отзыв' : 'Iltimos, sharh yozing');
+      return;
+    }
+    
+    if (newReview.trim().length < 10) {
+      setReviewError(lang === 'ru' ? 'Отзыв должен содержать минимум 10 символов' : 'Sharh kamida 10 ta belgidan iborat bo\'lishi kerak');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const res = await axios.post(`/api/freelancers/${selectedProfile.id}/reviews`, {
@@ -70,10 +92,11 @@ export default function Freelance({ user }) {
       setReviews(res.data.reviews || []);
       setNewReview('');
       setNewRating(0);
+      setReviewError('');
       await fetchFreelancers();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.error || t('common.errorGeneric'));
+      setReviewError(err.response?.data?.error || t('common.errorGeneric'));
     } finally {
       setSubmitting(false);
     }
@@ -81,23 +104,58 @@ export default function Freelance({ user }) {
 
   const submitAd = async (e) => {
     e.preventDefault();
-    if (!formTitle || !formDesc || !formPrice || !formContact) {
-      return alert("Barcha maydonlarni to'ldiring");
+    setFormError('');
+    
+    // Validation
+    if (!formTitle.trim()) {
+      setFormError(lang === 'ru' ? 'Введите название услуги' : 'Xizmat nomini kiriting');
+      return;
     }
+    
+    if (formTitle.trim().length < 3) {
+      setFormError(lang === 'ru' ? 'Название должно содержать минимум 3 символа' : 'Nom kamida 3 ta belgidan iborat bo\'lishi kerak');
+      return;
+    }
+    
+    if (!formDesc.trim()) {
+      setFormError(lang === 'ru' ? 'Введите описание' : 'Tavsif kiriting');
+      return;
+    }
+    
+    if (formDesc.trim().length < 20) {
+      setFormError(lang === 'ru' ? 'Описание должно содержать минимум 20 символов' : 'Tavsif kamida 20 ta belgidan iborat bo\'lishi kerak');
+      return;
+    }
+    
+    if (!formPrice.trim()) {
+      setFormError(lang === 'ru' ? 'Введите цену' : 'Narx kiriting');
+      return;
+    }
+    
+    if (!formContact.trim()) {
+      setFormError(lang === 'ru' ? 'Введите контакт' : 'Kontakt kiriting');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await axios.post('/api/freelancers', {
-        title: formTitle,
-        description: formDesc,
-        price: formPrice,
-        contact: formContact,
+        title: formTitle.trim(),
+        description: formDesc.trim(),
+        price: formPrice.trim(),
+        contact: formContact.trim(),
         userEmail: user?.email,
         userName: user?.name
       });
       setShowAddModal(false);
+      setFormTitle('');
+      setFormDesc('');
+      setFormPrice('');
+      setFormContact('');
+      setFormError('');
       await fetchFreelancers();
     } catch(err) {
-      alert(err.response?.data?.error || t('common.errorGeneric'));
+      setFormError(err.response?.data?.error || t('common.errorGeneric'));
     } finally {
       setSubmitting(false);
     }
@@ -117,6 +175,7 @@ export default function Freelance({ user }) {
       setFormPrice('');
       setFormContact('');
     }
+    setFormError('');
     setShowAddModal(true);
   };
 
@@ -354,12 +413,29 @@ export default function Freelance({ user }) {
                </div>
  
                <form onSubmit={submitReview} className="flex-column gap-3 mt-2">
-                 <textarea
-                   placeholder={t('freelance.reviewPlaceholder')}
-                   value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="3"
-                   className="tg-input"
-                   style={{ resize: 'none' }}
-                 />
+                 <div>
+                   <textarea
+                     placeholder={t('freelance.reviewPlaceholder')}
+                     value={newReview} 
+                     onChange={(e) => {
+                       setNewReview(e.target.value);
+                       setReviewError('');
+                     }} 
+                     disabled={submitting} 
+                     rows="4"
+                     className={`tg-input ${reviewError ? 'error' : ''}`}
+                     style={{ resize: 'none' }}
+                     maxLength={500}
+                   />
+                   <div className="flex-between mt-1" style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                     <span>{newReview.length}/500</span>
+                     {reviewError && (
+                       <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                         {reviewError}
+                       </span>
+                     )}
+                   </div>
+                 </div>
                  <button
                    type="submit" disabled={submitting || !newReview.trim() || newRating === 0}
                    className="flex-center"
@@ -371,7 +447,16 @@ export default function Freelance({ user }) {
                      boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.4)'
                    }}
                  >
-                   {t('freelance.submitReview')} <Send size={18} style={{ marginLeft: '8px' }} />
+                   {submitting ? (
+                     <>
+                       <div className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
+                       {lang === 'ru' ? 'Отправка...' : 'Yuborilmoqda...'}
+                     </>
+                   ) : (
+                     <>
+                       {t('freelance.submitReview')} <Send size={18} style={{ marginLeft: '8px' }} />
+                     </>
+                   )}
                  </button>
                </form>
              </div>
@@ -404,25 +489,107 @@ export default function Freelance({ user }) {
                 <form onSubmit={submitAd} className="flex-column gap-3">
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>{t('freelance.serviceName')}</label>
-                     <input type="text" required value={formTitle} onChange={e => setFormTitle(e.target.value)} disabled={submitting} className="tg-input" placeholder="Tarjimon, Web dasturchi" />
+                     <input 
+                       type="text" 
+                       required 
+                       value={formTitle} 
+                       onChange={e => {
+                         setFormTitle(e.target.value);
+                         setFormError('');
+                       }} 
+                       disabled={submitting} 
+                       className={`tg-input ${formError && !formTitle.trim() ? 'error' : ''}`}
+                       placeholder="Tarjimon, Web dasturchi"
+                       maxLength={100}
+                     />
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>{t('freelance.description')}</label>
-                     <textarea required rows={3} value={formDesc} onChange={e => setFormDesc(e.target.value)} disabled={submitting} className="tg-input" style={{resize: 'none'}} placeholder="..."></textarea>
+                     <textarea 
+                       required 
+                       rows={4} 
+                       value={formDesc} 
+                       onChange={e => {
+                         setFormDesc(e.target.value);
+                         setFormError('');
+                       }} 
+                       disabled={submitting} 
+                       className={`tg-input ${formError && !formDesc.trim() ? 'error' : ''}`}
+                       style={{resize: 'none'}} 
+                       placeholder="Xizmat haqida batafsil ma'lumot..."
+                       maxLength={500}
+                     />
+                     <div className="text-xs text-tertiary mt-1">{formDesc.length}/500</div>
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>{t('freelance.priceLabel')}</label>
-                     <input type="text" required value={formPrice} onChange={e => setFormPrice(e.target.value)} disabled={submitting} className="tg-input" placeholder="50,000 so'm / Kelishilgan" />
+                     <input 
+                       type="text" 
+                       required 
+                       value={formPrice} 
+                       onChange={e => {
+                         setFormPrice(e.target.value);
+                         setFormError('');
+                       }} 
+                       disabled={submitting} 
+                       className={`tg-input ${formError && !formPrice.trim() ? 'error' : ''}`}
+                       placeholder="50,000 so'm / Kelishilgan"
+                       maxLength={50}
+                     />
                   </div>
                   <div>
                      <label className="text-xs text-secondary mb-1" style={{ display: 'block' }}>{t('freelance.contact')}</label>
-                     <input type="text" required value={formContact} onChange={e => setFormContact(e.target.value)} disabled={submitting} className="tg-input" placeholder="@uzbtext" />
+                     <input 
+                       type="text" 
+                       required 
+                       value={formContact} 
+                       onChange={e => {
+                         setFormContact(e.target.value);
+                         setFormError('');
+                       }} 
+                       disabled={submitting} 
+                       className={`tg-input ${formError && !formContact.trim() ? 'error' : ''}`}
+                       placeholder="@username yoki +998901234567"
+                       maxLength={50}
+                     />
                   </div>
 
+                  {formError && (
+                    <div style={{ 
+                      padding: '12px', 
+                      background: 'rgba(255, 79, 122, 0.1)', 
+                      border: '1px solid rgba(255, 79, 122, 0.3)',
+                      borderRadius: '12px',
+                      color: 'var(--danger)',
+                      fontSize: '13px',
+                      fontWeight: 600
+                    }}>
+                      {formError}
+                    </div>
+                  )}
+
                   <button type="submit" disabled={submitting} style={{
-                    marginTop: '10px', background: 'linear-gradient(135deg, #f59e0b, #fbbf24)', color: '#1a1a1a', fontWeight: 'bold', border: 'none', borderRadius: '12px', padding: '14px', cursor: submitting ? 'not-allowed' : 'pointer'
+                    marginTop: '10px', 
+                    background: submitting ? 'var(--bg-card)' : 'linear-gradient(135deg, #f59e0b, #fbbf24)', 
+                    color: submitting ? 'var(--text-secondary)' : '#1a1a1a', 
+                    fontWeight: 'bold', 
+                    border: 'none', 
+                    borderRadius: '12px', 
+                    padding: '14px', 
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
                   }}>
-                      {submitting ? '...' : t('freelance.save')}
+                      {submitting ? (
+                        <>
+                          <div className="animate-spin" style={{ width: '16px', height: '16px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                          {lang === 'ru' ? 'Сохранение...' : 'Saqlanmoqda...'}
+                        </>
+                      ) : (
+                        t('freelance.save')
+                      )}
                   </button>
                 </form>
                 )}

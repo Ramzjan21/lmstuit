@@ -529,28 +529,73 @@ h6 {
   overflow: hidden;
 }
 
-/* Telegram Native Input Styling */
+/* Modern Input & Textarea Styling */
 .tg-input {
   width: 100%;
-  background: var(--tg-theme-secondary-bg-color, var(--bg-card));
-  border: 1px solid var(--tg-theme-secondary-bg-color, var(--border-color));
-  color: var(--tg-theme-text-color, var(--text-primary));
-  border-radius: 14px;
-  padding: 16px;
-  font-size: 16px; 
+  background: var(--glass-bg);
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 16px;
+  padding: 14px 18px;
+  font-size: 15px;
+  line-height: 1.5;
   outline: none;
-  font-family: inherit;
-  transition: all 0.2s ease-in-out;
+  font-family: var(--font-base);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tg-input:hover {
+  border-color: rgba(0, 209, 255, 0.4);
+  background: var(--glass-lightbg);
 }
 
 .tg-input:focus {
-  background: var(--tg-theme-bg-color, var(--bg-card-hover));
-  border-color: var(--tg-theme-button-color, var(--accent-primary));
-  box-shadow: 0 0 0 4px rgba(0, 209, 255, 0.15);
+  background: var(--glass-lightbg);
+  border-color: var(--accent-primary);
+  box-shadow: 
+    0 0 0 4px rgba(0, 209, 255, 0.12),
+    0 4px 12px rgba(0, 209, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .tg-input::placeholder {
-  color: var(--tg-theme-hint-color, var(--text-tertiary));
+  color: var(--text-tertiary);
+  opacity: 0.7;
+}
+
+.tg-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+
+textarea.tg-input {
+  min-height: 100px;
+  resize: vertical;
+  font-family: var(--font-base);
+}
+
+/* Input with error state */
+.tg-input.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px rgba(255, 79, 122, 0.12);
+}
+
+.tg-input.error:focus {
+  border-color: var(--danger);
+  box-shadow: 
+    0 0 0 4px rgba(255, 79, 122, 0.15),
+    0 4px 12px rgba(255, 79, 122, 0.2);
+}
+
+/* Input with success state */
+.tg-input.success {
+  border-color: var(--success);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
 }
 
 /* ─── CYBER LOADING ANIMATION ────────────────────────────────────────────────────── */

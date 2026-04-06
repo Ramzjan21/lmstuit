@@ -16,6 +16,7 @@ export default function Teachers({ user }) {
   const [newRating, setNewRating] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
     fetchTeachers();
@@ -36,6 +37,7 @@ export default function Teachers({ user }) {
     setSelectedTeacher(teacher);
     setNewReview('');
     setNewRating(0);
+    setReviewError('');
     try {
       const res = await axios.get(`/api/teachers/${teacher.id}/reviews`);
       setReviews(res.data.reviews || []);
@@ -48,11 +50,36 @@ export default function Teachers({ user }) {
   const closeTeacher = () => {
     setSelectedTeacher(null);
     setReviews([]);
+    setNewReview('');
+    setNewRating(0);
+    setReviewError('');
   };
 
   const submitReview = async (e) => {
     e.preventDefault();
-    if (!newReview.trim() || newRating === 0) return;
+    setReviewError('');
+    
+    // Validation
+    if (newRating === 0) {
+      setReviewError(lang === 'ru' ? 'Пожалуйста, выберите рейтинг' : 'Iltimos, reyting tanlang');
+      return;
+    }
+    
+    if (!newReview.trim()) {
+      setReviewError(lang === 'ru' ? 'Пожалуйста, напишите отзыв' : 'Iltimos, sharh yozing');
+      return;
+    }
+    
+    if (newReview.trim().length < 10) {
+      setReviewError(lang === 'ru' ? 'Отзыв должен содержать минимум 10 символов' : 'Sharh kamida 10 ta belgidan iborat bo\'lishi kerak');
+      return;
+    }
+    
+    if (newReview.trim().length > 500) {
+      setReviewError(lang === 'ru' ? 'Отзыв не должен превышать 500 символов' : 'Sharh 500 ta belgidan oshmasligi kerak');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const res = await axios.post(`/api/teachers/${selectedTeacher.id}/reviews`, {
@@ -62,10 +89,11 @@ export default function Teachers({ user }) {
       setReviews(res.data.reviews || []);
       setNewReview('');
       setNewRating(0);
+      setReviewError('');
       await fetchTeachers();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.error || t('common.errorGeneric'));
+      setReviewError(err.response?.data?.error || t('common.errorGeneric'));
     } finally {
       setSubmitting(false);
     }
@@ -295,12 +323,29 @@ export default function Teachers({ user }) {
               </div>
 
               <form onSubmit={submitReview} className="flex-column gap-3 mt-2">
-                <textarea
-                  placeholder={t('teachers.reviewPlaceholder')}
-                  value={newReview} onChange={(e) => setNewReview(e.target.value)} disabled={submitting} rows="3"
-                  className="tg-input"
-                  style={{ resize: 'none' }}
-                />
+                <div>
+                  <textarea
+                    placeholder={t('teachers.reviewPlaceholder')}
+                    value={newReview} 
+                    onChange={(e) => {
+                      setNewReview(e.target.value);
+                      setReviewError('');
+                    }} 
+                    disabled={submitting} 
+                    rows="4"
+                    className={`tg-input ${reviewError ? 'error' : ''}`}
+                    style={{ resize: 'none' }}
+                    maxLength={500}
+                  />
+                  <div className="flex-between mt-1" style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                    <span>{newReview.length}/500</span>
+                    {reviewError && (
+                      <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                        {reviewError}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <button
                   type="submit" disabled={submitting || !newReview.trim() || newRating === 0}
                   className="flex-center"
@@ -312,7 +357,16 @@ export default function Teachers({ user }) {
                     boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 4px 15px rgba(168, 85, 247, 0.4)'
                   }}
                 >
-                  {t('teachers.submitReview')} <Send size={18} style={{ marginLeft: '8px' }} />
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid var(--text-primary)', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
+                      {lang === 'ru' ? 'Отправка...' : 'Yuborilmoqda...'}
+                    </>
+                  ) : (
+                    <>
+                      {t('teachers.submitReview')} <Send size={18} style={{ marginLeft: '8px' }} />
+                    </>
+                  )}
                 </button>
               </form>
             </div>
