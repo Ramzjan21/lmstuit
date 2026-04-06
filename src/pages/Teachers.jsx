@@ -312,18 +312,42 @@ export default function Teachers({ user }) {
             </div>
 
             {/* Add review form */}
-            <div className="p-4" style={{ background: 'var(--bg-main)', paddingBottom: '30px' }}>
-              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>{t('teachers.rate')}</p>
-              <div className="flex-center mb-3" style={{ background: 'var(--bg-card-hover)', padding: '8px', borderRadius: '16px', width: 'fit-content' }}>
-                {[1, 2, 3, 4, 5].map(star => (
-                  <button key={star} type="button" onClick={() => setNewRating(star)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 6px', transition: 'transform 0.2s', transform: newRating === star ? 'scale(1.2)' : 'none' }}>
-                    <Star size={28} color={star <= newRating ? '#f59e0b' : 'var(--text-secondary)'} fill={star <= newRating ? '#f59e0b' : 'transparent'} />
-                  </button>
-                ))}
+            <div className="p-4" style={{ background: 'linear-gradient(180deg, var(--bg-main) 0%, var(--bg-card) 100%)', paddingBottom: '30px', borderTop: '1px solid var(--border-color)' }}>
+              <div className="glass-panel p-4 mb-3" style={{ background: 'rgba(168, 85, 247, 0.08)', borderColor: 'rgba(168, 85, 247, 0.2)' }}>
+                <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-primary)', letterSpacing: '0.5px' }}>{t('teachers.rate')}</p>
+                <div className="flex-center mb-2" style={{ gap: '8px' }}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button 
+                      key={star} 
+                      type="button" 
+                      onClick={() => setNewRating(star)} 
+                      style={{ 
+                        background: star <= newRating ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        padding: '8px', 
+                        borderRadius: '12px',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                        transform: newRating === star ? 'scale(1.15)' : 'scale(1)',
+                        boxShadow: star <= newRating ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none'
+                      }}
+                    >
+                      <Star size={32} color={star <= newRating ? '#f59e0b' : 'var(--text-tertiary)'} fill={star <= newRating ? '#f59e0b' : 'transparent'} />
+                    </button>
+                  ))}
+                </div>
+                {newRating > 0 && (
+                  <p className="text-center text-xs mt-2" style={{ color: '#f59e0b', fontWeight: 600 }}>
+                    {newRating === 5 ? '⭐ A\'lo!' : newRating === 4 ? '👍 Yaxshi!' : newRating === 3 ? '👌 Qoniqarli' : newRating === 2 ? '😐 O\'rtacha' : '😞 Yomon'}
+                  </p>
+                )}
               </div>
 
-              <form onSubmit={submitReview} className="flex-column gap-3 mt-2">
+              <form onSubmit={submitReview} className="flex-column gap-3">
                 <div>
+                  <label className="text-xs font-semibold mb-2" style={{ display: 'block', color: 'var(--text-secondary)' }}>
+                    {lang === 'ru' ? 'Ваш отзыв' : 'Sizning sharhingiz'}
+                  </label>
                   <textarea
                     placeholder={t('teachers.reviewPlaceholder')}
                     value={newReview} 
@@ -350,16 +374,22 @@ export default function Teachers({ user }) {
                   type="submit" disabled={submitting || !newReview.trim() || newRating === 0}
                   className="flex-center"
                   style={{
-                    width: '100%', height: '50px',
-                    background: (!newReview.trim() || newRating === 0) ? 'var(--bg-card)' : 'linear-gradient(135deg, #a855f7, #c084fc)',
-                    border: 'none', borderRadius: '14px', color: "var(--text-primary)", fontWeight: 'bold', fontSize: '15px',
-                    cursor: (!newReview.trim() || newRating === 0) ? 'not-allowed' : 'pointer', transition: '0.2s',
-                    boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 4px 15px rgba(168, 85, 247, 0.4)'
+                    width: '100%', height: '54px',
+                    background: (!newReview.trim() || newRating === 0) ? 'var(--glass-bg)' : 'linear-gradient(135deg, #a855f7, #c084fc)',
+                    border: 'none', 
+                    borderRadius: '16px', 
+                    color: (!newReview.trim() || newRating === 0) ? 'var(--text-tertiary)' : '#ffffff', 
+                    fontWeight: 'bold', 
+                    fontSize: '15px',
+                    cursor: (!newReview.trim() || newRating === 0) ? 'not-allowed' : 'pointer', 
+                    transition: 'all 0.3s ease',
+                    boxShadow: (!newReview.trim() || newRating === 0) ? 'none' : '0 8px 20px rgba(168, 85, 247, 0.4)',
+                    transform: (!newReview.trim() || newRating === 0) ? 'none' : 'translateY(-2px)'
                   }}
                 >
                   {submitting ? (
                     <>
-                      <div className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid var(--text-primary)', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
+                      <div className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
                       {lang === 'ru' ? 'Отправка...' : 'Yuborilmoqda...'}
                     </>
                   ) : (

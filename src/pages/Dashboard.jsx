@@ -135,8 +135,15 @@ export default function Dashboard({ user, onLogout }) {
   }, [schedule]);
 
   const upcomingTasks = useMemo(() => {
+    const now = Date.now();
     return tasks
-      .filter((task) => !task.completed && task.deadline)
+      .filter((task) => {
+        if (task.completed) return false;
+        if (!task.deadline) return false;
+        const deadlineTime = new Date(task.deadline).getTime();
+        // Only show tasks with future deadlines
+        return deadlineTime > now;
+      })
       .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
       .slice(0, 3);
   }, [tasks]);
