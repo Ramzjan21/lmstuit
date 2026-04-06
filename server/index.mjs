@@ -841,6 +841,12 @@ if (fs.existsSync(distDir)) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`[lms-proxy] running on http://localhost:${PORT}`);
-});
+// Start server only in non-serverless environment
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`[lms-proxy] running on http://localhost:${PORT}`);
+  });
+}
+
+// Export for Vercel serverless
+export default app;
