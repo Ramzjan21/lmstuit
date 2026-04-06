@@ -415,35 +415,51 @@ export const parseCourseDetail = (html = '', fallback = {}) => {
 export const parseTaskDetail = (html = '') => {
   const text = stripHtml(html);
   
-  // Parse maximum score (max ball)
-  // Patterns: "Ball: 10", "Maksimal ball: 20", "Max score: 100", "Балл: 50"
-  const maxScoreMatch = text.match(/(?:maksimal\s+ball|max(?:imum)?\s+(?:ball|score|балл)|ball\s*:\s*|балл\s*:\s*)(\d{1,3})/i);
-  const maxScore = parseNumber(maxScoreMatch?.[1], null);
+  // Parse from course detail page format:
+  // "Набранные баллы <h4>12.1</h4>" and "Макс. балл <h4>37</h4>"
+  const totalScoreMatch = html.match(/Набранные\s+баллы[\s\S]*?<h4[^>]*>([\d.]+)<\/h4>/i);
+  const totalMaxMatch = html.match(/Макс\.\s+балл[\s\S]*?<h4[^>]*>([\d.]+)<\/h4>/i);
   
-  // Parse student's score (olingan ball)
-  // Patterns: "Sizning ballingiz: 8", "Your score: 15", "Ваш балл: 20", "Olingan: 10"
-  const studentScoreMatch = text.match(/(?:sizning\s+ball(?:ingiz)?|your\s+score|ваш\s+балл|olingan(?:\s+ball)?|получено)\s*:?\s*(\d{1,3})/i);
-  const studentScore = parseNumber(studentScoreMatch?.[1], null);
+  let courseScore = totalScoreMatch ? parseNumber(totalScoreMatch[1], null) : null;
+  let courseMax = totalMaxMatch ? parseNumber(totalMaxMatch[1], null) : null;
   
-  // Parse submission status
-  // Patterns: "Topshirilgan", "Submitted", "Сдано", "Bajarildi"
-  const submitted = /topshirilgan|submitted|сдано|bajarildi|yuklangan|uploaded/i.test(text);
+  // Parse individual task scores from table rows
+  // Format: <button>3.5</button> <button>7</button> (score / max)
+  const taskScoreMatches = html.matchAll(/<div[^>]*class="btn-group"[^>]*>[\s\S]*?<button[^>]*class="[^"]*btn-default[^"]*"[^>]*>([\d.]+)<\/button>[\s\S]*?<button[^>]*class="[^"]*btn-primary[^"]*"[^>]*>([\d.]+)<\/button>/gi);
+  
+  let taskScore = null;
+  let taskMax = null;
+  
+  for (const match of taskScoreMatches) {
+    // Get first task score found (usually the most recent)
+    taskScore = parseNumber(match[1], null);
+    taskMax = parseNumber(match[2], null);
+    break; // Use first match
+  }
+  
+  // Prefer individual task score over course total
+  const finalScore = taskScore !== null ? taskScore : courseScore;
+  const finalMax = taskMax !== null ? taskMax : courseMax;
+  
+  // Parse submission status - check if file was uploaded
+  const submitted = /<a[^>]*href="[^"]*uploads\/activities[^"]*"[^>]*>/i.test(html) || 
+                    /topshirilgan|submitted|сдано|bajarildi|yuklangan|uploaded/i.test(text);
   
   // Parse submission date if available
   const submittedAtMatch = text.match(/(?:topshirilgan|submitted|сдано)\s*:?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?:\s+\d{1,2}:\d{2})?)/i);
   const submittedAt = submittedAtMatch?.[1] || null;
   
+  // Parse current grade from "Текущая оценка <h4>2</h4>"
+  const gradeMatch = html.match(/Текущая\s+оценка[\s\S]*?<h4[^>]*>(\d+)<\/h4>/i);
+  const grade = gradeMatch ? gradeMatch[1] : null;
+  
   // Parse teacher comment/feedback
   const commentMatch = html.match(/<div[^>]*(?:class|id)="[^"]*(?:comment|feedback|izoh|комментарий)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   const comment = commentMatch ? stripHtml(commentMatch[1]).trim() : null;
   
-  // Parse grade/status (A, B, C, etc. or "Qoniqarli", "Yaxshi", etc.)
-  const gradeMatch = text.match(/(?:baho|grade|оценка)\s*:?\s*([A-F]|qoniqarli|yaxshi|a'lo|отлично|хорошо|удовлетворительно)/i);
-  const grade = gradeMatch?.[1] || null;
-  
   return {
-    maxScore: maxScore !== null ? Math.max(1, Math.min(1000, maxScore)) : null,
-    score: studentScore !== null ? Math.max(0, Math.min(maxScore || 1000, studentScore)) : null,
+    maxScore: finalMax !== null ? Math.max(0, finalMax) : null,
+    score: finalScore !== null ? Math.max(0, finalScore) : null,
     submitted,
     submittedAt,
     comment: comment && comment.length > 5 ? comment : null,
