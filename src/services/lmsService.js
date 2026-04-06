@@ -94,28 +94,38 @@ const requestJson = async (path, options = {}) => {
     const creds = getCreds();
     if (creds && creds.login && creds.password) {
       console.warn('[lmsService] 401 received. Attempting auto re-login...');
-      const reloginRes = await fetch(`${DEFAULT_PROXY_BASE}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login: creds.login, password: creds.password })
-      });
-      if (reloginRes.ok) {
-        const reloginData = await reloginRes.json();
-        if (reloginData.sessionId) {
-          setSessionId(reloginData.sessionId);
-          if (reloginData.lmsCookie) setLmsCookie(reloginData.lmsCookie);
-          
-          const newHeaders = {
-            ...getAuthHeaders(),
-            ...(options.headers || {})
-          };
-          response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
-            credentials: 'include',
-            ...options,
-            headers: newHeaders
-          });
+      try {
+        const reloginRes = await fetch(`${DEFAULT_PROXY_BASE}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: creds.login, password: creds.password }),
+          timeout: 10000 // 10 second timeout
+        });
+        if (reloginRes.ok) {
+          const reloginData = await reloginRes.json();
+          if (reloginData.sessionId) {
+            setSessionId(reloginData.sessionId);
+            if (reloginData.lmsCookie) setLmsCookie(reloginData.lmsCookie);
+            console.log('[lmsService] Auto re-login successful! Retrying original request...');
+            
+            const newHeaders = {
+              ...getAuthHeaders(),
+              ...(options.headers || {})
+            };
+            response = await fetch(`${DEFAULT_PROXY_BASE}${path}`, {
+              credentials: 'include',
+              ...options,
+              headers: newHeaders
+            });
+          }
+        } else {
+          console.error('[lmsService] Auto re-login failed:', reloginRes.status);
         }
+      } catch (reloginError) {
+        console.error('[lmsService] Auto re-login error:', reloginError.message);
       }
+    } else {
+      console.warn('[lmsService] No credentials available for auto re-login');
     }
   }
 
