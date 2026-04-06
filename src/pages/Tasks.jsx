@@ -371,42 +371,34 @@ export default function Tasks({ user }) {
                               {(() => {
                                 const isPast = task.deadline && new Date(task.deadline) <= new Date();
                                 
-                                // Use task-specific score if available (from LMS task detail page)
-                                const hasTaskScore = task.score !== null && task.score !== undefined;
-                                const taskMaxScore = task.maxScore || 100;
-                                const taskScore = task.score || 0;
+                                // Only show score if we have actual task score from LMS
+                                const hasTaskScore = task.score !== null && task.score !== undefined && task.maxScore !== null && task.maxScore !== undefined;
                                 
-                                // Fallback: try to match with subject grades (old behavior)
-                                const subjectKey = (task.subject || '').toLowerCase().trim().slice(0, 20);
-                                const matchedGrade = grades.find(g => {
-                                  const gName = (g.name || '').toLowerCase().trim();
-                                  return gName && subjectKey && (gName.includes(subjectKey) || subjectKey.includes(gName.slice(0, 20)));
-                                });
-                                const subjectScore = matchedGrade?.score ?? null;
-                                
-                                // Determine which score to display
-                                const displayScore = hasTaskScore ? taskScore : subjectScore;
-                                const displayMaxScore = hasTaskScore ? taskMaxScore : 100;
-                                const scoreRatio = displayMaxScore > 0 ? (displayScore / displayMaxScore) : 0;
+                                let scoreDisplay = null;
+                                if (hasTaskScore) {
+                                  // Show exact score from LMS (e.g., 8/10, 15/20)
+                                  const scoreRatio = task.maxScore > 0 ? (task.score / task.maxScore) : 0;
+                                  scoreDisplay = (
+                                    <span style={{ 
+                                      fontSize: '11px', 
+                                      fontWeight: 700, 
+                                      color: scoreColor(scoreRatio), 
+                                      background: 'rgba(0,0,0,0.2)', 
+                                      padding: '2px 7px', 
+                                      borderRadius: '8px' 
+                                    }}>
+                                      🎯 {task.score}/{task.maxScore} ball
+                                      {task.submitted && ' ✓'}
+                                    </span>
+                                  );
+                                }
                                 
                                 return (
                                   <>
                                     <span className="text-xs" style={{ color: isPast ? 'var(--success)' : priorityColor(task.priority), fontWeight: 700 }}>
                                       {countdownLabel(task.deadline, t, isPast)}
                                     </span>
-                                    {isPast && displayScore !== null && (
-                                      <span style={{ 
-                                        fontSize: '11px', 
-                                        fontWeight: 700, 
-                                        color: scoreColor(scoreRatio), 
-                                        background: 'rgba(0,0,0,0.2)', 
-                                        padding: '2px 7px', 
-                                        borderRadius: '8px' 
-                                      }}>
-                                        🎯 {displayScore}/{displayMaxScore} ball
-                                        {hasTaskScore && task.submitted && ' ✓'}
-                                      </span>
-                                    )}
+                                    {isPast && scoreDisplay}
                                     {task.submitted && !isPast && (
                                       <span style={{ fontSize: '10px', color: 'var(--success)' }}>
                                         ✓ Topshirilgan
