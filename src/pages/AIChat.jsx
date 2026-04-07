@@ -189,6 +189,11 @@ export default function AIChat({ user }) {
   };
 
   const handleSend = async (textOverride = null) => {
+    // If textOverride is an event object, ignore it
+    if (textOverride && typeof textOverride === 'object' && textOverride.nativeEvent) {
+      textOverride = null;
+    }
+    
     const userText = textOverride || input.trim();
     if (!userText || loading) return;
 
