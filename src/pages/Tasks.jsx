@@ -70,7 +70,6 @@ const canonicalToLabel = (canonical, t) => {
 export default function Tasks({ user }) {
   const { t, lang } = useI18n();
   const [tasks, setTasks] = useState([]);
-  const [grades, setGrades] = useState([]);
   const [grouped, setGrouped] = useState([]);
   const [activeSemester, setActiveSemester] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -132,13 +131,10 @@ export default function Tasks({ user }) {
   const loadData = async () => {
     if (!user) return;
 
-    const [storedTasks, storedGrades, syncData] = await Promise.all([
+    const [storedTasks, syncData] = await Promise.all([
       getJson(`tasks_${user.email}`, []),
-      getJson(`grades_${user.email}`, []),
       getJson(`lms_last_sync_${user.email}`, null)
     ]);
-
-    setGrades(Array.isArray(storedGrades) ? storedGrades : []);
 
     const lmsTasks = (Array.isArray(storedTasks) ? storedTasks : []).filter((task) => task.source === 'lms');
     const normalized = lmsTasks

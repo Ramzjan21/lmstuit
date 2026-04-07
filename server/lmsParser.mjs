@@ -437,6 +437,22 @@ export const parseTaskDetail = (html = '') => {
     break; // Use first match
   }
   
+  // Additional patterns for task scores
+  // Pattern 1: "Балл: 8/10" or "Ball: 8/10"
+  const scoreSlashMatch = text.match(/(?:балл|ball|score)\s*:?\s*([\d.]+)\s*\/\s*([\d.]+)/i);
+  if (scoreSlashMatch && taskScore === null) {
+    taskScore = parseNumber(scoreSlashMatch[1], null);
+    taskMax = parseNumber(scoreSlashMatch[2], null);
+  }
+  
+  // Pattern 2: Look for score in activity detail page
+  // "Ваш балл: 8 из 10" or "Your score: 8 out of 10"
+  const scoreOutOfMatch = text.match(/(?:ваш\s+балл|your\s+score|sizning\s+ball(?:ingiz)?)\s*:?\s*([\d.]+)\s*(?:из|out\s+of|dan)\s*([\d.]+)/i);
+  if (scoreOutOfMatch && taskScore === null) {
+    taskScore = parseNumber(scoreOutOfMatch[1], null);
+    taskMax = parseNumber(scoreOutOfMatch[2], null);
+  }
+  
   // Prefer individual task score over course total
   const finalScore = taskScore !== null ? taskScore : courseScore;
   const finalMax = taskMax !== null ? taskMax : courseMax;
@@ -459,6 +475,7 @@ export const parseTaskDetail = (html = '') => {
   
   return {
     maxScore: finalMax !== null ? Math.max(0, finalMax) : null,
+    max_score: finalMax !== null ? Math.max(0, finalMax) : null, // Add both formats for compatibility
     score: finalScore !== null ? Math.max(0, finalScore) : null,
     submitted,
     submittedAt,
