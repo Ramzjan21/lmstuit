@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader, Sparkles, Mic, Volume2, VolumeX, Settings, X } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Mic, Volume2, VolumeX, Settings, X } from 'lucide-react';
 import { aiService } from '../services/aiService';
 import { useI18n } from '../i18n';
 import { formatTime } from '../utils/dateUtils';
@@ -20,7 +20,6 @@ export default function AIChat({ user }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [liveMode, setLiveMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -38,7 +37,6 @@ export default function AIChat({ user }) {
     scrollToBottom();
   }, [messages]);
 
-  // Auto-resize textarea like Telegram
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -62,11 +60,10 @@ export default function AIChat({ user }) {
         
         setInput(transcript);
         
-        // In live mode, auto-send when speech ends
         if (liveMode && event.results[event.results.length - 1].isFinal) {
           setTimeout(() => {
             if (transcript.trim()) {
-              handleSend(transcript.trim());
+              sendMessage(transcript.trim());
             }
           }, 500);
         }
@@ -80,7 +77,6 @@ export default function AIChat({ user }) {
       };
 
       recognitionRef.current.onend = () => {
-        // In live mode, restart listening after processing
         if (liveMode && isListening && !loading) {
           try {
             recognitionRef.current.start();
@@ -93,7 +89,6 @@ export default function AIChat({ user }) {
       };
     }
 
-    // Initialize Speech Synthesis
     if ('speechSynthesis' in window) {
       synthRef.current = window.speechSynthesis;
     }
@@ -108,7 +103,6 @@ export default function AIChat({ user }) {
     };
   }, [voiceLang, liveMode, isListening, loading]);
 
-  // Update recognition settings when they change
   useEffect(() => {
     if (recognitionRef.current) {
       recognitionRef.current.lang = voiceLang;
@@ -139,10 +133,8 @@ export default function AIChat({ user }) {
     setLiveMode(newLiveMode);
     
     if (newLiveMode) {
-      // Start listening when enabling live mode
       startListening();
     } else {
-      // Stop listening when disabling live mode
       stopListening();
     }
   };
@@ -150,7 +142,6 @@ export default function AIChat({ user }) {
   const speak = (text) => {
     if (!synthRef.current || !voiceEnabled) return;
 
-    // Cancel any ongoing speech
     synthRef.current.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -159,97 +150,22 @@ export default function AIChat({ user }) {
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
-      setIsSpeaking(false);
-      // In live mode, restart listening after speaking
       if (liveMode && !isListening) {
         setTimeout(() => startListening(), 500);
       }
     };
-    utterance.onerror = () => setIsSpeaking(false);
 
     synthRef.current.speak(utterance);
   };
 
-  const stopSpeaking = () => {
-    if (synthRef.current) {
-      synthRef.current.cancel();
-      setIsSpeaking(false);
-    }
-  };
-
-  const buildConversation = (nextUserText) => {
+  const buildConversation = (userText) => {
     const recentMessages = messages
       .filter((msg) => msg.role === 'assistant' || msg.role === 'user')
       .slice(-10)
       .map((msg) => ({ role: msg.role, content: msg.content }));
 
-    return [...recentMessages, { role: 'user', content: nextUserText }];
-  };
-
-  const handleSend = async (textOverride = null) => {
-    // If textOverride is an event object, ignore it
-    if (textOverride && typeof textOverride === 'object' && textOverride.nativeEvent) {
-      textOverride = null;
-    }
-    
-    const userText = textOverride || input.trim();
-    if (!userText || loading) return;
-
-    const userMessage = {
-      id: Date.now(),
-      role: 'user',
-      content: userText,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    // Stop listening while processing (only in non-live mode)
-    if (isListening && !liveMode) {
-      stopListening();
-    }
-
-    const conversation = buildConversation(userText);
-    const aiResult = await aiService.getReply({
-      conversation,
-      userName: user?.name,
-      userLang: lang
-    });
-
-    const assistantText = aiResult.success
-      ? aiResult.message
-      : `${aiResult.error}\n\n${generateFallbackResponse(userText)}`;
-
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: assistantText,
-        timestamp: new Date()
-      }
-    ]);
-    setLoading(false);
-
-    // Auto-speak the response if voice is enabled
-    if (voiceEnabled && aiResult.success) {
-      speak(assistantText);
-    } else if (liveMode && !voiceEnabled) {
-      // In live mode without voice, restart listening immediately
-      setTimeout(() => startListening(), 500);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    // Send on Enter, newline on Shift+Enter (like Telegram)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    return [...recentMessages, { role: 'user', content: userText }];
   };
 
   const generateFallbackResponse = (question) => {
@@ -278,8 +194,80 @@ export default function AIChat({ user }) {
       : "Darslar, vazifalar, baholar yoki LMS integratsiyasi haqida aniqroq savol bering! 😊";
   };
 
-  const fmtTime = (date) => formatTime(date, lang);
+  const sendMessage = async (text) => {
+    const userText = String(text || '').trim();
+    if (!userText || loading) return;
 
+    const userMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: userText,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    if (isListening && !liveMode) {
+      stopListening();
+    }
+
+    try {
+      const conversation = buildConversation(userText);
+      const aiResult = await aiService.getReply({
+        conversation,
+        userName: user?.name,
+        userLang: lang
+      });
+
+      const assistantText = aiResult.success
+        ? aiResult.message
+        : `${aiResult.error}\n\n${generateFallbackResponse(userText)}`;
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: assistantText,
+          timestamp: new Date()
+        }
+      ]);
+
+      if (voiceEnabled && aiResult.success) {
+        speak(assistantText);
+      } else if (liveMode && !voiceEnabled) {
+        setTimeout(() => startListening(), 500);
+      }
+    } catch (error) {
+      console.error('Send message error:', error);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: generateFallbackResponse(userText),
+          timestamp: new Date()
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSend = () => {
+    sendMessage(input);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const fmtTime = (date) => formatTime(date, lang);
   const canSend = input.trim() && !loading;
 
   const voiceLanguages = [
@@ -508,7 +496,7 @@ export default function AIChat({ user }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Telegram-style Input Area */}
+      {/* Input Area */}
       <div style={{
         display: 'flex',
         alignItems: 'flex-end',
@@ -606,6 +594,10 @@ export default function AIChat({ user }) {
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.05); opacity: 0.9; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
