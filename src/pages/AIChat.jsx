@@ -248,8 +248,9 @@ export default function AIChat({ user }) {
   };
 
   const generateFallbackResponse = (question) => {
-    const lowerQ = question.toLowerCase();
-    const isRu = /[а-яё]/i.test(question);
+    const questionStr = String(question || '');
+    const lowerQ = questionStr.toLowerCase();
+    const isRu = /[а-яё]/i.test(questionStr);
 
     if (lowerQ.includes('dars') || lowerQ.includes('jadval') || lowerQ.includes('расписан') || lowerQ.includes('занят')) {
       return isRu
