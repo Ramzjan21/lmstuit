@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Loader, Sparkles, Mic, Volume2, VolumeX } from 'lucide-react';
 import { aiService } from '../services/aiService';
 import { useI18n } from '../i18n';
 import { formatTime } from '../utils/dateUtils';
@@ -19,8 +19,13 @@ export default function AIChat({ user }) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,6 +42,97 @@ export default function AIChat({ user }) {
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
     }
   }, [input]);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = lang === 'ru' ? 'ru-RU' : 'uz-UZ';
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    // Initialize Speech Synthesis
+    if ('speechSynthesis' in window) {
+      synthRef.current = window.speechSynthesis;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
+    };
+  }, [lang]);
+
+  // Update recognition language when lang changes
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = lang === 'ru' ? 'ru-RU' : 'uz-UZ';
+    }
+  }, [lang]);
+
+  const startListening = () => {
+    if (recognitionRef.current && !isListening) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Failed to start recognition:', error);
+      }
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const speak = (text) => {
+    if (!synthRef.current || !voiceEnabled) return;
+
+    // Cancel any ongoing speech
+    synthRef.current.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang === 'ru' ? 'ru-RU' : 'uz-UZ';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    synthRef.current.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (synthRef.current) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  };
 
   const buildConversation = (nextUserText) => {
     const recentMessages = messages
@@ -83,6 +179,11 @@ export default function AIChat({ user }) {
       }
     ]);
     setLoading(false);
+
+    // Auto-speak the response if voice is enabled
+    if (voiceEnabled && aiResult.success) {
+      speak(assistantText);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -126,14 +227,34 @@ export default function AIChat({ user }) {
     <div className="flex-column" style={{ height: 'calc(100vh - 140px)' }}>
       {/* Header */}
       <div className="glass-panel p-4 mb-3" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(236,72,153,0.2) 100%)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px' }}>
-        <div className="flex-center gap-3" style={{ justifyContent: 'flex-start' }}>
-          <div style={{ background: 'var(--accent-gradient)', padding: '10px', borderRadius: '50%', boxShadow: '0 4px 20px rgba(99,102,241,0.4)' }}>
-            <Sparkles size={22} color="white" />
+        <div className="flex-between">
+          <div className="flex-center gap-3" style={{ justifyContent: 'flex-start' }}>
+            <div style={{ background: 'var(--accent-gradient)', padding: '10px', borderRadius: '50%', boxShadow: '0 4px 20px rgba(99,102,241,0.4)' }}>
+              <Sparkles size={22} color="white" />
+            </div>
+            <div>
+              <h1 className="text-gradient" style={{ fontSize: '20px', marginBottom: '2px' }}>{t('ai.title')}</h1>
+              <p className="text-secondary text-xs">{t('ai.subtitle')}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-gradient" style={{ fontSize: '20px', marginBottom: '2px' }}>{t('ai.title')}</h1>
-            <p className="text-secondary text-xs">{t('ai.subtitle')}</p>
-          </div>
+          <button
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            style={{
+              width: '40px',
+              height: '40px',
+              background: voiceEnabled ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
+              border: `1px solid ${voiceEnabled ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            title={voiceEnabled ? 'Ovozni o\'chirish' : 'Ovozni yoqish'}
+          >
+            {voiceEnabled ? <Volume2 size={18} color="var(--success)" /> : <VolumeX size={18} color="var(--danger)" />}
+          </button>
         </div>
       </div>
 
@@ -234,6 +355,32 @@ export default function AIChat({ user }) {
             overflowY: 'auto',
           }}
         />
+        
+        {/* Microphone Button */}
+        <button
+          onClick={isListening ? stopListening : startListening}
+          disabled={loading}
+          style={{
+            width: '40px',
+            height: '40px',
+            flexShrink: 0,
+            background: isListening ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'var(--glass-lightbg)',
+            border: 'none',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: isListening ? '0 4px 15px rgba(239,68,68,0.4)' : 'none',
+            animation: isListening ? 'pulse 1.5s infinite' : 'none'
+          }}
+          title={isListening ? 'Tinglashni to\'xtatish' : 'Ovoz bilan yozish'}
+        >
+          <Mic size={18} color={isListening ? 'white' : 'var(--text-secondary)'} />
+        </button>
+
+        {/* Send Button */}
         <button
           onClick={handleSend}
           disabled={!canSend}
@@ -261,6 +408,10 @@ export default function AIChat({ user }) {
         @keyframes bounce {
           0%, 60%, 100% { transform: translateY(0); }
           30% { transform: translateY(-6px); }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.9; }
         }
       `}</style>
     </div>
