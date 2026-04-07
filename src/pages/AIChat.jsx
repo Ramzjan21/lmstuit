@@ -66,7 +66,7 @@ export default function AIChat({ user }) {
         if (liveMode && event.results[event.results.length - 1].isFinal) {
           setTimeout(() => {
             if (transcript.trim()) {
-              handleSendVoice(transcript.trim());
+              handleSend(transcript.trim());
             }
           }, 500);
         }
@@ -179,56 +179,6 @@ export default function AIChat({ user }) {
     }
   };
 
-  const handleSendVoice = async (text) => {
-    if (!text || loading) return;
-
-    const userMessage = {
-      id: Date.now(),
-      role: 'user',
-      content: text,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    // Stop listening while processing
-    if (isListening) {
-      stopListening();
-    }
-
-    const conversation = buildConversation(text);
-    const aiResult = await aiService.getReply({
-      conversation,
-      userName: user?.name,
-      userLang: lang
-    });
-
-    const assistantText = aiResult.success
-      ? aiResult.message
-      : `${aiResult.error}\n\n${generateFallbackResponse(text)}`;
-
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: assistantText,
-        timestamp: new Date()
-      }
-    ]);
-    setLoading(false);
-
-    // Auto-speak the response if voice is enabled
-    if (voiceEnabled && aiResult.success) {
-      speak(assistantText);
-    } else if (liveMode && !voiceEnabled) {
-      // In live mode without voice, restart listening immediately
-      setTimeout(() => startListening(), 500);
-    }
-  };
-
   const buildConversation = (nextUserText) => {
     const recentMessages = messages
       .filter((msg) => msg.role === 'assistant' || msg.role === 'user')
@@ -238,10 +188,10 @@ export default function AIChat({ user }) {
     return [...recentMessages, { role: 'user', content: nextUserText }];
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const handleSend = async (textOverride = null) => {
+    const userText = textOverride || input.trim();
+    if (!userText || loading) return;
 
-    const userText = input.trim();
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -252,6 +202,11 @@ export default function AIChat({ user }) {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+
+    // Stop listening while processing (only in non-live mode)
+    if (isListening && !liveMode) {
+      stopListening();
+    }
 
     const conversation = buildConversation(userText);
     const aiResult = await aiService.getReply({
@@ -278,6 +233,9 @@ export default function AIChat({ user }) {
     // Auto-speak the response if voice is enabled
     if (voiceEnabled && aiResult.success) {
       speak(assistantText);
+    } else if (liveMode && !voiceEnabled) {
+      // In live mode without voice, restart listening immediately
+      setTimeout(() => startListening(), 500);
     }
   };
 
