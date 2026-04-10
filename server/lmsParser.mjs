@@ -415,65 +415,80 @@ export const parseCourseDetail = (html = '', fallback = {}) => {
 export const parseTaskDetail = (html = '') => {
   const text = stripHtml(html);
   
+  // Debug: Save HTML to see actual structure
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('[parseTaskDetail] HTML length:', html.length);
+    console.log('[parseTaskDetail] Text preview:', text.substring(0, 500));
+  }
+  
   let taskScore = null;
   let taskMax = null;
   
-  // Pattern 1: Parse from activity detail page - most common format
-  // Look for "Ваш балл: X из Y" or similar patterns
-  const yourScoreMatch = text.match(/(?:ваш\s+балл|your\s+score|sizning\s+ball(?:ingiz)?)\s*:?\s*([\d.]+)\s*(?:из|out\s+of|dan)\s*([\d.]+)/i);
-  if (yourScoreMatch) {
-    taskScore = parseNumber(yourScoreMatch[1], null);
-    taskMax = parseNumber(yourScoreMatch[2], null);
+  // Pattern 1: Most specific - activity grade table
+  // Look for table with "Балл" and actual score values
+  const activityTableMatch = html.match(/<tr[^>]*>[\s\S]*?<td[^>]*>(?:Балл|Score|Ball|Оценка|Grade|Baho)[^<]*<\/td>[\s\S]*?<td[^>]*>([\d.]+)[^<]*<\/td>[\s\S]*?<td[^>]*>(?:из|\/|out of|dan)[^<]*<\/td>[\s\S]*?<td[^>]*>([\d.]+)[^<]*<\/td>/i);
+  if (activityTableMatch) {
+    taskScore = parseNumber(activityTableMatch[1], null);
+    taskMax = parseNumber(activityTableMatch[2], null);
+    console.log('[parseTaskDetail] Pattern 1 (activity table):', taskScore, '/', taskMax);
   }
   
-  // Pattern 2: Parse from button groups in task table
-  // Format: <button class="btn-default">8</button> <button class="btn-primary">10</button>
+  // Pattern 2: Direct score display "Ваш балл: X из Y"
   if (taskScore === null) {
-    const buttonMatches = Array.from(html.matchAll(/<button[^>]*class="[^"]*btn-default[^"]*"[^>]*>([\d.]+)<\/button>[\s\S]*?<button[^>]*class="[^"]*btn-primary[^"]*"[^>]*>([\d.]+)<\/button>/gi));
+    const directScoreMatch = text.match(/(?:ваш\s+балл|your\s+score|sizning\s+ball(?:ingiz)?|набранные\s+баллы|earned\s+points)\s*:?\s*([\d.]+)\s*(?:из|out\s+of|dan)\s*([\d.]+)/i);
+    if (directScoreMatch) {
+      taskScore = parseNumber(directScoreMatch[1], null);
+      taskMax = parseNumber(directScoreMatch[2], null);
+      console.log('[parseTaskDetail] Pattern 2 (direct score):', taskScore, '/', taskMax);
+    }
+  }
+  
+  // Pattern 3: Button groups (most common in task lists)
+  if (taskScore === null) {
+    const buttonMatches = Array.from(html.matchAll(/<button[^>]*class="[^"]*btn[^"]*"[^>]*>([\d.]+)<\/button>[\s\S]{0,100}<button[^>]*class="[^"]*btn[^"]*"[^>]*>([\d.]+)<\/button>/gi));
     if (buttonMatches.length > 0) {
       // Get the last match (most recent score)
       const lastMatch = buttonMatches[buttonMatches.length - 1];
       taskScore = parseNumber(lastMatch[1], null);
       taskMax = parseNumber(lastMatch[2], null);
+      console.log('[parseTaskDetail] Pattern 3 (buttons):', taskScore, '/', taskMax);
     }
   }
   
-  // Pattern 3: Parse from slash format "8/10" or "Ball: 8/10"
+  // Pattern 4: Slash format anywhere in text
   if (taskScore === null) {
-    const slashMatch = text.match(/(?:балл|ball|score)\s*:?\s*([\d.]+)\s*\/\s*([\d.]+)/i);
-    if (slashMatch) {
-      taskScore = parseNumber(slashMatch[1], null);
-      taskMax = parseNumber(slashMatch[2], null);
+    const slashMatches = text.matchAll(/(?:^|\s|:)([\d.]+)\s*\/\s*([\d.]+)(?:\s|$|балл|ball|score)/gi);
+    for (const match of slashMatches) {
+      const score = parseNumber(match[1], null);
+      const max = parseNumber(match[2], null);
+      // Only accept if max is reasonable (between 1 and 100)
+      if (max && max >= 1 && max <= 100) {
+        taskScore = score;
+        taskMax = max;
+        console.log('[parseTaskDetail] Pattern 4 (slash):', taskScore, '/', taskMax);
+        break;
+      }
     }
   }
   
-  // Pattern 4: Parse from course detail page (fallback)
-  // "Набранные баллы <h4>12.1</h4>" and "Макс. балл <h4>37</h4>"
+  // Pattern 5: H4 tags with scores
   if (taskScore === null) {
-    const totalScoreMatch = html.match(/(?:Набранные\s+баллы|Earned\s+points|To'plangan\s+ball)[\s\S]*?<h4[^>]*>([\d.]+)<\/h4>/i);
-    const totalMaxMatch = html.match(/(?:Макс\.\s+балл|Max\.\s+points|Maksimal\s+ball)[\s\S]*?<h4[^>]*>([\d.]+)<\/h4>/i);
-    
-    if (totalScoreMatch) taskScore = parseNumber(totalScoreMatch[1], null);
-    if (totalMaxMatch) taskMax = parseNumber(totalMaxMatch[1], null);
+    const h4Matches = Array.from(html.matchAll(/<h4[^>]*>([\d.]+)<\/h4>/gi));
+    if (h4Matches.length >= 2) {
+      // Assume first is score, second is max
+      taskScore = parseNumber(h4Matches[0][1], null);
+      taskMax = parseNumber(h4Matches[1][1], null);
+      console.log('[parseTaskDetail] Pattern 5 (h4 tags):', taskScore, '/', taskMax);
+    }
   }
   
-  // Pattern 5: Look for grade table with scores
-  // <td>Балл</td><td>8</td> ... <td>Макс</td><td>10</td>
+  // Pattern 6: Grade display with "Оценка: X / Y"
   if (taskScore === null) {
-    const tableScoreMatch = html.match(/<td[^>]*>(?:Балл|Score|Ball)<\/td>\s*<td[^>]*>([\d.]+)<\/td>/i);
-    const tableMaxMatch = html.match(/<td[^>]*>(?:Макс|Max|Maksimal)<\/td>\s*<td[^>]*>([\d.]+)<\/td>/i);
-    
-    if (tableScoreMatch) taskScore = parseNumber(tableScoreMatch[1], null);
-    if (tableMaxMatch) taskMax = parseNumber(tableMaxMatch[1], null);
-  }
-  
-  // Pattern 6: Parse from activity grade display
-  // "Оценка: 8 / 10" or "Grade: 8 / 10"
-  if (taskScore === null) {
-    const gradeSlashMatch = text.match(/(?:оценка|grade|baho)\s*:?\s*([\d.]+)\s*\/\s*([\d.]+)/i);
-    if (gradeSlashMatch) {
-      taskScore = parseNumber(gradeSlashMatch[1], null);
-      taskMax = parseNumber(gradeSlashMatch[2], null);
+    const gradeDisplayMatch = text.match(/(?:оценка|grade|baho)\s*:?\s*([\d.]+)\s*\/\s*([\d.]+)/i);
+    if (gradeDisplayMatch) {
+      taskScore = parseNumber(gradeDisplayMatch[1], null);
+      taskMax = parseNumber(gradeDisplayMatch[2], null);
+      console.log('[parseTaskDetail] Pattern 6 (grade display):', taskScore, '/', taskMax);
     }
   }
   
@@ -493,7 +508,7 @@ export const parseTaskDetail = (html = '') => {
   const commentMatch = html.match(/<div[^>]*(?:class|id)="[^"]*(?:comment|feedback|izoh|комментарий)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   const comment = commentMatch ? stripHtml(commentMatch[1]).trim() : null;
   
-  console.log(`[parseTaskDetail] Found score: ${taskScore}/${taskMax}, submitted: ${submitted}`);
+  console.log(`[parseTaskDetail] FINAL: score=${taskScore}, max=${taskMax}, submitted=${submitted}`);
   
   return {
     maxScore: taskMax !== null ? Math.max(0, Math.round(taskMax)) : null,
@@ -720,7 +735,11 @@ export const buildAcademicBundle = ({ profile, schedule, deadlines, studyPlan, f
     .filter(Boolean);
 
   const grades = (gradesWithAttendance.length ? gradesWithAttendance : merged).filter((item) => {
+    // Don't filter if no semester subjects - show all
     if (!semesterSubjects.length) return true;
+    // Always include subjects that have attendance or score data
+    if (item.nb > 0 || item.score > 0) return true;
+    // Otherwise check if it matches semester
     return subjectMatchesSemester(item.name, semesterSubjects);
   });
 
@@ -731,7 +750,8 @@ export const buildAcademicBundle = ({ profile, schedule, deadlines, studyPlan, f
       : semesterCourses;
 
   const tasks = deadlines.filter((task) => {
-    if (!semesterTaskSubjects.length) return false;
+    // Don't filter if no semester subjects - show all tasks
+    if (!semesterTaskSubjects.length) return true;
     const subjectText = task.subject || task.title || '';
     return subjectMatchesSemester(subjectText, semesterTaskSubjects);
   });
