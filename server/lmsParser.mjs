@@ -447,15 +447,39 @@ export const parseCoursesFromJson = (data = [], studyPlanSubjects = []) => {
 
 export const parseCourseDetail = (html = '', fallback = {}) => {
   const text = stripHtml(html);
-  const nb = parseNumber(text.match(/(?:\bNB\b|НБ|пропуск[^\d]{0,15})(\d{1,2})/i)?.[1], null);
-  const limit = parseNumber(text.match(/(?:лимит|limit|max)[^\d]{0,15}(\d{1,2})/i)?.[1], null);
-  const score = parseNumber(text.match(/(?:балл|ball|score|рейтинг|итог)[^\d]{0,15}(\d{1,3})/i)?.[1], null);
-
+  
+  // === Score: "Набранные баллы 32 Макс. балл 50" ===
+  const earnedMatch = text.match(/Набранные\s+баллы\s+([\d.,]+)/i);
+  const maxBallMatch = text.match(/Макс\.\s*балл\s+([\d.,]+)/i);
+  const earned = parseNumber(earnedMatch?.[1], null);
+  const maxBall = parseNumber(maxBallMatch?.[1], null);
+  
+  // score as percentage 0-100 for compatibility
+  const score = earned !== null && maxBall !== null && maxBall > 0
+    ? Math.round((earned / maxBall) * 100)
+    : null;
+  
+  // === Attendance percentage: "Успеваемость 64%" ===
+  const uspMatch = text.match(/Успеваемость\s+([\d.,]+)\s*%/i);
+  const attendancePercent = parseNumber(uspMatch?.[1], null);
+  
+  // === Current grade (5-scale): "Текущая оценка 3" ===
+  const ocenkaMatch = text.match(/Текущая\s+оценка\s+(\d)/i);
+  const currentGrade = parseNumber(ocenkaMatch?.[1], null);
+  
+  // NB (missed classes) - not directly on this page, comes from JSON API
+  const nb = fallback.nb !== undefined && fallback.nb !== null ? fallback.nb : null;
+  const limit = fallback.limit || null;
+  
   return {
     ...fallback,
+    score,           // 0-100 percentage
+    earned,          // raw earned points (e.g. 32)
+    maxBall,         // max possible (e.g. 50)
+    attendancePercent,  // 0-100 %
+    currentGrade,    // 1-5 scale
     nb,
     limit,
-    score: score !== null ? Math.max(0, Math.min(100, score)) : fallback.score ?? null
   };
 };
 

@@ -421,7 +421,11 @@ export const fetchCourses = async (cookie) => {
   return details.map((item) => ({
     name: item.name,
     credit: item.credit || 0,
-    score: item.score,
+    score: item.score,                // 0-100 percentage
+    earned: item.earned ?? null,      // raw earned points  
+    maxBall: item.maxBall ?? null,    // max possible points
+    attendancePercent: item.attendancePercent ?? null,  // 0-100%
+    currentGrade: item.currentGrade ?? null,            // 1-5 scale
     nb: item.nb,
     limit: item.limit || (item.credit ? Math.max(4, item.credit + 3) : null)
   }));

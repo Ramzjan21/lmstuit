@@ -276,14 +276,19 @@ export default function Grades({ user }) {
       <div className="flex-column gap-3">
         {subjects.length ? (
           subjects.map((subject) => {
-            const score = Number(subject.score || 0);
-            const ratio = getAttendanceRatio(subject);
-            const tone = statusTone(score);
+            const percentScore = Number(subject.score || subject.attendancePercent || 0);
+            const earned = subject.earned ?? null;
+            const maxBall = subject.maxBall ?? null;
+            const attendancePercent = subject.attendancePercent ?? null;
+            const currentGrade = subject.currentGrade ?? null;
+            const tone = statusTone(percentScore);
             const limit = Number(subject.limit || 0) || (subject.credit ? Math.max(4, Number(subject.credit) + 3) : 7);
             const nb = Number(subject.nb || 0);
+            // Use nb/limit ratio for the progress bar (not attendancePercent which is score-based)
+            const nbRatio = limit > 0 ? Math.min(100, (nb / limit) * 100) : 0;
 
             return (
-              <div key={subject.id} className="glass-panel p-4" style={{ background: 'var(--glass-bg)' }}>
+              <div key={subject.id || subject.name} className="glass-panel p-4" style={{ background: 'var(--glass-bg)' }}>
                 <div className="flex-between mb-3" style={{ alignItems: 'flex-start', gap: '10px' }}>
                   <div>
                     <p className="font-semibold text-sm">{subject.name}</p>
@@ -292,55 +297,65 @@ export default function Grades({ user }) {
                       {subject.credit || 0} {lang === 'ru' ? 'кредитов' : 'kredit'}
                     </p>
                   </div>
-                  <span
-                    className="text-xs flex-center"
-                    style={{
-                      gap: '4px',
-                      color: tone.color,
-                      fontWeight: 700,
-                      background: 'var(--glass-lightbg)',
-                      padding: '4px 8px',
-                      borderRadius: '999px'
-                    }}
-                  >
-                    {tone.icon}
-                      {t(tone.key)}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <span
+                      className="text-xs flex-center"
+                      style={{ gap: '4px', color: tone.color, fontWeight: 700, background: 'var(--glass-lightbg)', padding: '4px 8px', borderRadius: '999px' }}
+                    >
+                      {tone.icon} {t(tone.key)}
                     </span>
+                    {currentGrade !== null && (
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        {lang === 'ru' ? 'Оценка:' : 'Baho:'} <b style={{ color: currentGrade >= 4 ? 'var(--success)' : currentGrade >= 3 ? 'var(--warning)' : 'var(--danger)' }}>{currentGrade}/5</b>
+                      </span>
+                    )}
                   </div>
+                </div>
 
                 <div className="flex-between" style={{ gap: '16px', alignItems: 'center' }}>
                   <div style={{ width: '70px', height: '70px' }}>
                     <CircularProgressbar
-                      value={score}
-                      text={`${score}`}
+                      value={percentScore}
+                      text={earned !== null && maxBall !== null ? `${earned}/${maxBall}` : `${percentScore}%`}
                       styles={buildStyles({
                         pathColor: tone.color,
                         textColor: 'var(--text-primary)',
                         trailColor: 'var(--glass-lightbg)',
-                        textSize: '24px'
+                        textSize: earned !== null ? '18px' : '24px'
                       })}
                     />
                   </div>
 
                   <div style={{ flex: 1 }}>
+                    {/* Attendance (NB) row */}
                     <div className="flex-between mb-1">
                       <p className="text-xs text-secondary">{t('grades.attendance')}</p>
-                      <p className="text-xs" style={{ color: ratio >= 75 ? 'var(--danger)' : 'var(--text-primary)', fontWeight: 700 }}>
-                        {nb} / {limit}
+                      <p className="text-xs" style={{ color: nbRatio >= 75 ? 'var(--danger)' : 'var(--text-primary)', fontWeight: 700 }}>
+                        {lang === 'ru' ? 'НБ:' : 'NB:'} {nb} / {limit}
                       </p>
                     </div>
 
                     <div style={{ width: '100%', height: '8px', background: 'var(--glass-lightbg)', borderRadius: '6px', overflow: 'hidden' }}>
                       <div
                         style={{
-                          width: `${ratio}%`,
+                          width: `${nbRatio}%`,
                           height: '100%',
-                          background: ratio >= 75 ? 'var(--danger)' : ratio >= 50 ? 'var(--warning)' : 'var(--success)'
+                          background: nbRatio >= 75 ? 'var(--danger)' : nbRatio >= 50 ? 'var(--warning)' : 'var(--success)'
                         }}
                       />
                     </div>
 
-                    <p className="text-xs text-secondary mt-2">{t('grades.attendanceRealtime')}</p>
+                    {/* Score row */}
+                    {attendancePercent !== null && (
+                      <div className="flex-between mt-2">
+                        <p className="text-xs text-secondary">{lang === 'ru' ? 'Успеваемость:' : 'O\'zlashtirish:'}</p>
+                        <p className="text-xs font-semibold" style={{ color: attendancePercent >= 70 ? 'var(--success)' : attendancePercent >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
+                          {attendancePercent}%
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-secondary mt-1">{t('grades.attendanceRealtime')}</p>
                   </div>
                 </div>
               </div>
