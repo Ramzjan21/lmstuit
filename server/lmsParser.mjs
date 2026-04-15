@@ -415,100 +415,90 @@ export const parseCourseDetail = (html = '', fallback = {}) => {
 export const parseTaskDetail = (html = '') => {
   const text = stripHtml(html);
   
-  // Debug: Save HTML to see actual structure
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-    console.log('[parseTaskDetail] HTML length:', html.length);
-    console.log('[parseTaskDetail] Text preview:', text.substring(0, 500));
-  }
-  
   let taskScore = null;
   let taskMax = null;
   
-  // Pattern 1: Most specific - activity grade table
-  // Look for table with "Балл" and actual score values
-  const activityTableMatch = html.match(/<tr[^>]*>[\s\S]*?<td[^>]*>(?:Балл|Score|Ball|Оценка|Grade|Baho)[^<]*<\/td>[\s\S]*?<td[^>]*>([\d.]+)[^<]*<\/td>[\s\S]*?<td[^>]*>(?:из|\/|out of|dan)[^<]*<\/td>[\s\S]*?<td[^>]*>([\d.]+)[^<]*<\/td>/i);
-  if (activityTableMatch) {
-    taskScore = parseNumber(activityTableMatch[1], null);
-    taskMax = parseNumber(activityTableMatch[2], null);
-    console.log('[parseTaskDetail] Pattern 1 (activity table):', taskScore, '/', taskMax);
+  // --- Strategy 1: JSON data embedded in page ---
+  // LMS often embeds JS data like: var task = {...,"grade":8,"max_grade":10,...}
+  const jsonDataMatch = html.match(/(?:var\s+task|"task"\s*:|\btask\s*=)\s*({[\s\S]*?});/i);
+  if (jsonDataMatch) {
+    try {
+      const obj = JSON.parse(jsonDataMatch[1]);
+      if (obj.grade !== undefined && obj.max_grade !== undefined) {
+        taskScore = parseNumber(obj.grade, null);
+        taskMax = parseNumber(obj.max_grade, null);
+      }
+    } catch {}
   }
   
-  // Pattern 2: Direct score display "Ваш балл: X из Y"
+  // --- Strategy 2: LMS-specific grade display in form "X bal Y baldan" ---
   if (taskScore === null) {
-    const directScoreMatch = text.match(/(?:ваш\s+балл|your\s+score|sizning\s+ball(?:ingiz)?|набранные\s+баллы|earned\s+points)\s*:?\s*([\d.]+)\s*(?:из|out\s+of|dan)\s*([\d.]+)/i);
-    if (directScoreMatch) {
-      taskScore = parseNumber(directScoreMatch[1], null);
-      taskMax = parseNumber(directScoreMatch[2], null);
-      console.log('[parseTaskDetail] Pattern 2 (direct score):', taskScore, '/', taskMax);
+    const uzMatch = text.match(/(\d+[\.,]?\d*)\s*(?:ball?|балл)\s+(\d+[\.,]?\d*)\s*(?:ball?|балл|dan|дан|из)/i);
+    if (uzMatch) {
+      taskScore = parseNumber(uzMatch[1], null);
+      taskMax = parseNumber(uzMatch[2], null);
     }
   }
   
-  // Pattern 3: Button groups (most common in task lists)
+  // --- Strategy 3: "Sizning balingiz: X / Y" or "Ваш балл: X из Y" ---
   if (taskScore === null) {
-    const buttonMatches = Array.from(html.matchAll(/<button[^>]*class="[^"]*btn[^"]*"[^>]*>([\d.]+)<\/button>[\s\S]{0,100}<button[^>]*class="[^"]*btn[^"]*"[^>]*>([\d.]+)<\/button>/gi));
-    if (buttonMatches.length > 0) {
-      // Get the last match (most recent score)
-      const lastMatch = buttonMatches[buttonMatches.length - 1];
-      taskScore = parseNumber(lastMatch[1], null);
-      taskMax = parseNumber(lastMatch[2], null);
-      console.log('[parseTaskDetail] Pattern 3 (buttons):', taskScore, '/', taskMax);
+    const directMatch = text.match(/(?:sizning\s+bal|vaш\s+балл|your\s+(?:score|grade))[^\d]*?(\d+[\.,]?\d*)[\s/]+(\d+[\.,]?\d*)/i);
+    if (directMatch) {
+      taskScore = parseNumber(directMatch[1], null);
+      taskMax = parseNumber(directMatch[2], null);
     }
   }
   
-  // Pattern 4: Slash format anywhere in text
+  // --- Strategy 4: <h4> number pairs inside grade widget ---
   if (taskScore === null) {
-    const slashMatches = text.matchAll(/(?:^|\s|:)([\d.]+)\s*\/\s*([\d.]+)(?:\s|$|балл|ball|score)/gi);
-    for (const match of slashMatches) {
-      const score = parseNumber(match[1], null);
-      const max = parseNumber(match[2], null);
-      // Only accept if max is reasonable (between 1 and 100)
-      if (max && max >= 1 && max <= 100) {
-        taskScore = score;
-        taskMax = max;
-        console.log('[parseTaskDetail] Pattern 4 (slash):', taskScore, '/', taskMax);
+    // Find the grade widget area specifically
+    const gradeWidgetMatch = html.match(/(?:grade|baho|балл|оценка|score)[^\n]{0,200}?<h4[^>]*>(\d+)<\/h4>[\s\S]{0,200}?<h4[^>]*>(\d+)<\/h4>/i);
+    if (gradeWidgetMatch) {
+      taskScore = parseNumber(gradeWidgetMatch[1], null);
+      taskMax = parseNumber(gradeWidgetMatch[2], null);
+    }
+  }
+  
+  // --- Strategy 5: Two consecutive <h4> numbers anywhere in page ---
+  if (taskScore === null) {
+    const h4s = [...html.matchAll(/<h4[^>]*>(\d+)<\/h4>/gi)].map(m => parseNumber(m[1], null));
+    if (h4s.length >= 2) {
+      // Only trust if it seems like score / max (max should be > 0 and <= 100)
+      const first = h4s[0];
+      const second = h4s[1];
+      if (second !== null && second > 0 && second <= 100 && first !== null && first <= second) {
+        taskScore = first;
+        taskMax = second;
+      }
+    }
+  }
+  
+  // --- Strategy 6: "X / Y" slash pattern with reasonable values ---
+  if (taskScore === null) {
+    for (const match of text.matchAll(/(?<!\d)(\d{1,3})\s*\/\s*(\d{1,3})(?!\d)/g)) {
+      const s = parseNumber(match[1], null);
+      const m = parseNumber(match[2], null);
+      if (m !== null && m >= 1 && m <= 100 && s !== null && s >= 0 && s <= m) {
+        taskScore = s;
+        taskMax = m;
         break;
       }
     }
   }
   
-  // Pattern 5: H4 tags with scores
-  if (taskScore === null) {
-    const h4Matches = Array.from(html.matchAll(/<h4[^>]*>([\d.]+)<\/h4>/gi));
-    if (h4Matches.length >= 2) {
-      // Assume first is score, second is max
-      taskScore = parseNumber(h4Matches[0][1], null);
-      taskMax = parseNumber(h4Matches[1][1], null);
-      console.log('[parseTaskDetail] Pattern 5 (h4 tags):', taskScore, '/', taskMax);
-    }
-  }
+  // --- Detect submission ---
+  const submitted = 
+    /href="[^"]*uploads\/activities[^"]*"/i.test(html) ||
+    /topshirilgan|submitted|сдан[оа]|bajarildi|yuklangan|uploaded/i.test(text);
   
-  // Pattern 6: Grade display with "Оценка: X / Y"
-  if (taskScore === null) {
-    const gradeDisplayMatch = text.match(/(?:оценка|grade|baho)\s*:?\s*([\d.]+)\s*\/\s*([\d.]+)/i);
-    if (gradeDisplayMatch) {
-      taskScore = parseNumber(gradeDisplayMatch[1], null);
-      taskMax = parseNumber(gradeDisplayMatch[2], null);
-      console.log('[parseTaskDetail] Pattern 6 (grade display):', taskScore, '/', taskMax);
-    }
-  }
-  
-  // Parse submission status
-  const submitted = /<a[^>]*href="[^"]*uploads\/activities[^"]*"[^>]*>/i.test(html) || 
-                    /topshirilgan|submitted|сдано|bajarildi|yuklangan|uploaded/i.test(text);
-  
-  // Parse submission date
-  const submittedAtMatch = text.match(/(?:topshirilgan|submitted|сдано)\s*:?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?:\s+\d{1,2}:\d{2})?)/i);
+  const submittedAtMatch = text.match(/(?:topshirilgan|submitted|сдано|yuklangan)\s*:?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?:\s+\d{1,2}:\d{2})?)/i);
   const submittedAt = submittedAtMatch?.[1] || null;
   
-  // Parse current grade (5-point scale)
   const gradeMatch = html.match(/(?:Текущая\s+оценка|Current\s+grade|Joriy\s+baho)[\s\S]*?<h4[^>]*>(\d+)<\/h4>/i);
   const grade = gradeMatch ? gradeMatch[1] : null;
   
-  // Parse teacher comment
   const commentMatch = html.match(/<div[^>]*(?:class|id)="[^"]*(?:comment|feedback|izoh|комментарий)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   const comment = commentMatch ? stripHtml(commentMatch[1]).trim() : null;
-  
-  console.log(`[parseTaskDetail] FINAL: score=${taskScore}, max=${taskMax}, submitted=${submitted}`);
   
   return {
     maxScore: taskMax !== null ? Math.max(0, Math.round(taskMax)) : null,
