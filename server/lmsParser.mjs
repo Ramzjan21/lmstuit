@@ -49,10 +49,15 @@ export const parseNumber = (value, fallback = null) => {
 };
 
 export const normalizeSubjectKey = (value = '') => {
-  return stripHtml(value)
+  let key = stripHtml(value)
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
+  
+  // Alias for missing grades matching
+  key = key.replace(/иностранный язык/g, 'английский язык');
+  
+  return key;
 };
 
 const parseCredits = (text = '') => {
@@ -75,6 +80,12 @@ const normalizeSubjectName = (raw = '') => {
     .trim();
 
   if (!subject) subject = stripHtml(raw);
+  
+  // UI alias
+  if (subject.includes('Иностранный язык')) {
+    subject = subject.replace('Иностранный', 'Английский');
+  }
+  
   return subject;
 };
 
