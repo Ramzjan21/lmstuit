@@ -68,6 +68,7 @@ const telegramUserSchema = new mongoose.Schema({
   notifyNb: { type: Boolean, default: true },
   notifyTasks: { type: Boolean, default: true },
   taskHoursBefore: { type: Number, default: 24 }, // notify when deadline < N hours
+  autoSubmitEnabled: { type: Boolean, default: false }, // Auto-submit empty docx before deadline
   linkedAt: { type: Date, default: Date.now }
 });
 

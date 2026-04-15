@@ -16,7 +16,9 @@ import {
   fetchStudyPlan,
   loginLms,
   fetchFileBuffer,
-  fetchTaskAttachmentLinks
+  fetchTaskAttachmentLinks,
+  submitEmptyDocx,
+  fetchCourseTaskIds
 } from './lmsClient.mjs';
 
 const PORT = Number(process.env.PORT || 3030);
@@ -832,6 +834,102 @@ setTimeout(() => {
   runBackgroundSync(); // Run immediately on boot
   setInterval(runBackgroundSync, BG_SYNC_INTERVAL_MS);
 }, 15000);
+
+// ─── AUTO-SUBMIT EMPTY DOCX FEATURE ─────────────────────────────────────────
+
+// GET/POST settings for auto-submit
+app.post('/api/telegram/auto-submit-setting', requireSession, async (req, res) => {
+  try {
+    const userEmail = req.session.lmsUser?.login;
+    const { enabled } = req.body;
+    if (!isMongoConnected) return res.json({ ok: false, reason: 'db_disconnected' });
+    await TelegramUser.updateOne(
+      { userEmail },
+      { $set: { autoSubmitEnabled: !!enabled } }
+    );
+    res.json({ ok: true, autoSubmitEnabled: !!enabled });
+  } catch (err) { sendError(res, err); }
+});
+
+app.get('/api/telegram/auto-submit-setting', requireSession, async (req, res) => {
+  try {
+    const userEmail = req.session.lmsUser?.login;
+    if (!isMongoConnected) return res.json({ ok: true, autoSubmitEnabled: false });
+    const tgUser = await TelegramUser.findOne({ userEmail }).lean();
+    res.json({ ok: true, autoSubmitEnabled: tgUser?.autoSubmitEnabled ?? false });
+  } catch (err) { sendError(res, err); }
+});
+
+// Manual trigger: submit empty docx for a specific task
+app.post('/api/lms/auto-submit-task', requireSession, async (req, res) => {
+  try {
+    const { courseUrl, activityId } = req.body;
+    if (!courseUrl || !activityId) return res.status(400).json({ error: 'courseUrl and activityId required' });
+    const result = await submitEmptyDocx(req.session.lmsCookie, courseUrl, activityId);
+    res.json(result);
+  } catch (err) { sendError(res, err); }
+});
+
+// Background auto-submit cron: runs every 15 min, checks users with autoSubmitEnabled
+const runAutoSubmitCron = async () => {
+  if (!isMongoConnected) return;
+  try {
+    const usersWithAutoSubmit = await TelegramUser.find({
+      autoSubmitEnabled: true,
+      lmsPassword: { $exists: true, $ne: null }
+    }).lean();
+
+    if (!usersWithAutoSubmit.length) return;
+    console.log(`[AUTO-SUBMIT] Checking ${usersWithAutoSubmit.length} user(s)...`);
+
+    for (const tgUser of usersWithAutoSubmit) {
+      try {
+        const login = tgUser.userEmail;
+        const password = Buffer.from(tgUser.lmsPassword, 'base64').toString('utf-8');
+        const auth = await loginLms(login, password);
+        const cookie = auth.cookie;
+
+        const tasks = await fetchDeadlines(cookie, false); // Don't enrich, just basic list
+        const now = new Date();
+
+        for (const task of tasks) {
+          if (!task.link || !task.deadline) continue;
+          const deadline = new Date(task.deadline);
+          const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+
+          // Submit if deadline is within 1 hour and task is not submitted
+          if (hoursLeft > 0 && hoursLeft <= 1 && !task.submitted) {
+            try {
+              // Get activity IDs from course page
+              const activityIds = await fetchCourseTaskIds(cookie, task.link);
+              if (activityIds.length > 0) {
+                for (const { taskId } of activityIds) {
+                  await submitEmptyDocx(cookie, task.link, taskId);
+                  console.log(`[AUTO-SUBMIT] ✅ Submitted for ${login}: task ${taskId} (${task.title})`);
+
+                  if (tgUser.chatId) {
+                    const msg = tgUser.lang === 'ru'
+                      ? `🤖 <b>Авто-отправка!</b>\n\nВазифа: <b>${task.title}</b>\nMuddati 1 soat ichida tugadi, tizim avtomatik bo'sh fayl yukladi.`
+                      : `🤖 <b>Avtomatik topshirildi!</b>\n\nVazifa: <b>${task.title}</b>\nDeadline 1 soatdan kam qoldi, tizim avtomatik bo'sh fayl yukladi.`;
+                    await sendMessage(tgUser.chatId, msg);
+                  }
+                }
+              }
+            } catch (submitErr) {
+              console.warn(`[AUTO-SUBMIT] Failed for task ${task.id}:`, submitErr.message);
+            }
+          }
+        }
+      } catch (userErr) {
+        console.warn(`[AUTO-SUBMIT] Failed for ${tgUser.userEmail}:`, userErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[AUTO-SUBMIT] Fatal:', err.message);
+  }
+};
+
+setInterval(runAutoSubmitCron, 15 * 60 * 1000); // every 15 minutes
 
 // ─── STATIC FILES & SPA FALLBACK ────────────────────────────────────────────
 if (fs.existsSync(distDir)) {

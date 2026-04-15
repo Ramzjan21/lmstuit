@@ -465,6 +465,30 @@ export const lmsService = {
     };
   },
 
+  async getAutoSubmitSetting() {
+    try {
+      const res = await fetch('/api/telegram/auto-submit-setting', {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      return data?.autoSubmitEnabled ?? false;
+    } catch {
+      return false;
+    }
+  },
+
+  async setAutoSubmitSetting(enabled) {
+    const res = await fetch('/api/telegram/auto-submit-setting', {
+      method: 'POST',
+      credentials: 'include',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ enabled })
+    });
+    const data = await res.json();
+    return data?.autoSubmitEnabled ?? enabled;
+  },
+
   async logout() {
     try {
       await fetch(`${DEFAULT_PROXY_BASE}/logout`, {

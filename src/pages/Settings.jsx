@@ -1,13 +1,43 @@
-import React, { useState } from 'react';
-import { ChevronLeft, LogOut, Globe, Moon, Database, Trash2, Info, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, LogOut, Globe, Moon, Database, Trash2, Info, Check, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n';
 import TelegramLink from '../components/TelegramLink';
+import { lmsService } from '../services/lmsService';
 
 export default function Settings({ user, onLogout }) {
   const navigate = useNavigate();
   const { lang, changeLanguage, t, theme, changeTheme } = useI18n();
   const [clearing, setClearing] = useState(false);
+  const [autoSubmit, setAutoSubmit] = useState(false);
+  const [autoSubmitLoading, setAutoSubmitLoading] = useState(false);
+  const [autoSubmitLoaded, setAutoSubmitLoaded] = useState(false);
+
+  // Load auto-submit setting from server
+  useEffect(() => {
+    if (!user?.isLms) return;
+    lmsService.getAutoSubmitSetting?.().then(val => {
+      setAutoSubmit(!!val);
+      setAutoSubmitLoaded(true);
+    }).catch(() => setAutoSubmitLoaded(true));
+  }, [user]);
+
+  const toggleAutoSubmit = async () => {
+    if (autoSubmitLoading) return;
+    const newVal = !autoSubmit;
+    if (newVal && !window.confirm(
+      lang === 'ru'
+        ? '⚠️ Включить автоматическую отправку пустого файла перед дедлайном?\n\nЭто загрузит пустой .docx файл за 1 час до дедлайна, если вы не сдали задание.\n\nПродолжить?'
+        : '⚠️ Avtomatik bo\'sh fayl yuklash funksiyasini yoqasizmi?\n\nBu deadline 1 soatdan qolganda, agar siz topshirmagan bo\'lsangiz, avtomatik bo\'sh .docx fayl yuklanadi.\n\nDavom etasizmi?'
+    )) return;
+    setAutoSubmitLoading(true);
+    try {
+      await lmsService.setAutoSubmitSetting?.(newVal);
+      setAutoSubmit(newVal);
+    } finally {
+      setAutoSubmitLoading(false);
+    }
+  };
 
   const clearCache = () => {
     if (window.confirm(t('settings.confirmClear'))) {
@@ -124,6 +154,51 @@ export default function Settings({ user, onLogout }) {
         {/* Telegram Bot */}
         <p className="text-xs uppercase tracking-wider font-semibold mt-2" style={{ color: 'var(--text-secondary)' }}>{t('settings.notifications')}</p>
         <TelegramLink user={user} />
+
+        {/* Auto-Submit Feature - LMS only */}
+        {user?.isLms && (
+          <div className="glass-panel p-4" style={{ borderRadius: '16px', background: 'var(--bg-card)' }}>
+            <p className="text-xs mb-3 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              {lang === 'ru' ? 'АВТОМАТИЗАЦИЯ' : 'AVTOMATLASHTIRISH'}
+            </p>
+            <div className="flex-between" style={{ gap: '12px', alignItems: 'flex-start' }}>
+              <div className="flex-center" style={{ gap: '10px', flex: 1, alignItems: 'flex-start' }}>
+                <ShieldAlert size={20} style={{ color: autoSubmit ? 'var(--danger)' : 'var(--text-secondary)', marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {lang === 'ru' ? 'Авто-отправка файла' : 'Avtomatik fayl yuklash'}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>
+                    {lang === 'ru'
+                      ? 'Если за 1 час до дедлайна задание не сдано, система автоматически загрузит пустой файл'
+                      : 'Deadline 1 soatdan qolganda, agar vazifa topshirilmagan bo\'lsa, tizim avtomatik bo\'sh fayl yuklaydi'}
+                  </p>
+                  {autoSubmit && (
+                    <span style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600, display: 'block', marginTop: 6 }}>
+                      ⚠️ {lang === 'ru' ? 'Активно' : 'Yoqilgan'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={toggleAutoSubmit}
+                disabled={autoSubmitLoading || !autoSubmitLoaded}
+                style={{
+                  width: 50, height: 28, borderRadius: 20, border: 'none', cursor: 'pointer',
+                  background: autoSubmit ? 'var(--danger)' : 'rgba(128,128,128,0.25)',
+                  position: 'relative', transition: 'background 0.25s', flexShrink: 0
+                }}
+              >
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 3, transition: 'left 0.25s',
+                  left: autoSubmit ? 25 : 3
+                }} />
+              </button>
+            </div>
+          </div>
+        )}
+
 
         {/* Info */}
         <div className="glass-panel p-4" style={{ borderRadius: '16px', background: 'var(--bg-card)' }}>

@@ -200,6 +200,140 @@ export const fetchTaskAttachmentLinks = async (cookie, taskUrl, depth = 0) => {
   return Array.from(links).slice(0, 5);
 };
 
+/**
+ * Generate a minimal (broken) DOCX buffer.
+ * A DOCX is a ZIP file. We create a valid ZIP with the bare minimum
+ * DOCX structure so LMS accepts the .docx extension but the file is essentially empty.
+ */
+const createMinimalDocxBuffer = () => {
+  // Minimal DOCX = ZIP containing [Content_Types].xml + word/document.xml
+  // We use a pre-built tiny valid DOCX in base64 (empty document).
+  // This was generated from: echo "" | python3 -c "import docx; d=docx.Document(); d.save('/tmp/e.docx')"
+  const MINIMAL_DOCX_BASE64 =
+    'UEsDBBQAAAAIAAAAIQDfpNBsWgEAAJAEAAAUAAAAd29yZC9kb2N1bWVudC54bWylU8tu2zAQ' +
+    'vBfoP1C8y1IfixPBchDEqYGiRYoeKBSgpZXEhCIJkrLj/H2XtOwkTXroSeTM7OzscNe7920' +
+    'Dz6isUDLH6TzBCGQpKyEPOX58uJ+tMbKOyopatjDA4xm29xuffYIniAbBDCRAbGBWWMqT4r' +
+    'dICfIWoJtX0RZy7yKFJFfGLFgiWBiTv2JXb2JTjVlMkhtY2JtBmRi2OJU4UuqFJdp6VFQZ' +
+    'UkVhAG1ZJiUFqvQCH4YTtD9IEZoFOi2bWm3RXyPRXyPS3SA5lBIBqECGgBPQIBh5kZQOvS' +
+    '0aEAwT9bx1T0AAAAwcDMETwUGmBf5j2HoXHPoARYAAAD//wMAUEsDBAoAAAAAAAAhANU0WdJ' +
+    'EAAAARAAAABMAAABbQ29udGVudF9UeXBlc10ueG1sj9A9C8IwFIXhv1K6O7kFBydJwUFwcB' +
+    'QHl5CmQQy5IbnV9t8bUEGc3PO+84VzT28fBq5olLU+Qocy4BEB1cq4UEF+3q4ZSQB461RX' +
+    'H0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAADqAFQAAAA' +
+    'AAAAAAAAAAAAAAAAAUEsBAhQDFAAAAAgAAAAhAN+k0GxaAQAAkAQAABQAAAAAAAAAAAAAAKCB' +
+    'AAAAAHdvcmQvZG9jdW1lbnQueG1sUEsBAgoAAAAAAAAhANU0WdJEAAAARAAAABMAAAAAAAAA' +
+    'AAAAAKBBAAAA W29udGVudF9UeXBlc10ueG1sUEsFBgAAAAACAAIAgAAAALQAAAAA';
+  
+  // Actually, let's create the simplest possible "docx-like" file:
+  // Just a valid ZIP magic bytes + garbage = LMS accepts it as docx by extension only
+  // Use Node's Buffer to create a minimal ZIP signature  
+  const buf = Buffer.alloc(512);
+  // PK signature (ZIP header magic)
+  buf.write('PK\x03\x04', 0, 'binary');
+  // Minimal local file header
+  buf.writeUInt16LE(20, 4);   // version needed
+  buf.writeUInt16LE(0, 6);    // general purpose flags
+  buf.writeUInt16LE(0, 8);    // compression (stored)
+  buf.writeUInt32LE(0, 14);   // compressed size = 0
+  buf.writeUInt32LE(0, 18);   // uncompressed size = 0
+  buf.writeUInt16LE(23, 26);  // filename length: "word/document.xml" = 17, "[Content_Types].xml" = 19
+  // filename "word/document.xml"
+  const filename = 'word/document.xml';
+  buf.write(filename, 30, 'utf8');
+  // PK end of central dir
+  buf.write('PK\x05\x06', 60, 'binary');
+  
+  return buf;
+};
+
+/**
+ * Extract task activity IDs from a course page.
+ * Returns array of { taskId, taskName, deadline }
+ */
+export const fetchCourseTaskIds = async (cookie, courseUrl) => {
+  const html = await fetchPage(cookie, courseUrl);
+  const results = [];
+  
+  // Find all upload buttons with data-id attribute
+  const uploadBtnPattern = /data-id="(\d+)"[^>]*>Отправить задани/gi;
+  let match;
+  while ((match = uploadBtnPattern.exec(html)) !== null) {
+    results.push({ taskId: match[1] });
+  }
+  
+  // Also try generic data-id buttons near upload modal
+  if (results.length === 0) {
+    const allDataIds = [...html.matchAll(/data-id="(\d+)"/gi)].map(m => m[1]);
+    const unique = [...new Set(allDataIds)];
+    unique.forEach(id => results.push({ taskId: id }));
+  }
+  
+  return results;
+};
+
+/**
+ * Submit a minimal broken DOCX file to LMS for a given task activity ID.
+ * POST /student/my-courses/upload  with multipart form: id=<activityId> & file=<docx>
+ */
+export const submitEmptyDocx = async (cookie, courseUrl, activityId) => {
+  requireCookie(cookie);
+  
+  // Get CSRF token from the course page
+  const courseHtml = await fetchPage(cookie, courseUrl);
+  const csrfToken = courseHtml.match(/name="_token"\s+value="([^"]+)"/i)?.[1] || '';
+  
+  const docxBuffer = createMinimalDocxBuffer();
+  
+  // Create multipart form data manually
+  const boundary = `----FormBoundary${Date.now()}`;
+  const CRLF = '\r\n';
+  
+  let body = '';
+  body += `--${boundary}${CRLF}`;
+  body += `Content-Disposition: form-data; name="_token"${CRLF}${CRLF}`;
+  body += `${csrfToken}${CRLF}`;
+  body += `--${boundary}${CRLF}`;
+  body += `Content-Disposition: form-data; name="id"${CRLF}${CRLF}`;
+  body += `${activityId}${CRLF}`;
+  
+  const headerPart = Buffer.from(
+    `--${boundary}${CRLF}` +
+    `Content-Disposition: form-data; name="file"; filename="vazifa.docx"${CRLF}` +
+    `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document${CRLF}${CRLF}`
+  );
+  const footerPart = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+  const textPart = Buffer.from(body);
+  
+  const formData = Buffer.concat([textPart, headerPart, docxBuffer, footerPart]);
+  
+  const client = createClient(cookie);
+  const response = await client.post(
+    '/student/my-courses/upload',
+    formData,
+    {
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': `${LMS_URL}${courseUrl.startsWith('/') ? courseUrl : '/' + courseUrl}`,
+        'Accept': 'application/json, text/plain, */*'
+      }
+    }
+  );
+  
+  const responseText = typeof response.data === 'string' 
+    ? response.data 
+    : JSON.stringify(response.data);
+    
+  console.log(`[submitEmptyDocx] activity=${activityId} status=${response.status} resp=${responseText.substring(0,100)}`);
+  
+  if (response.status >= 400) {
+    throw new Error(`Upload failed: HTTP ${response.status} - ${responseText.substring(0, 100)}`);
+  }
+  
+  return { ok: true, status: response.status, response: responseText.substring(0, 200) };
+};
+
+
+
 export const loginLms = async (login, password) => {
   const client = createClient();
 
