@@ -5,7 +5,7 @@ import { getJson } from '../services/storageService';
 import { useI18n } from '../i18n';
 
 export default function Leaderboard({ user }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [rows, setRows] = useState([]);
   const [syncing, setSyncing] = useState(false);
 
