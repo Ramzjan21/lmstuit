@@ -523,6 +523,7 @@ export const fetchCourses = async (cookie) => {
          const id = String(jc.courseId);
          if (coursesDict.has(id)) {
             const ext = coursesDict.get(id);
+            if (jc.name) ext.name = jc.name; // Use cleaner name from JSON API
             ext.nb = jc.nb; // Prioritize exact JSON attendance
             if (!ext.limit && jc.limit) ext.limit = jc.limit;
             if (!ext.credit && jc.credit) ext.credit = jc.credit;
