@@ -151,7 +151,7 @@ export default function Library({ user }) {
 
   return (
     <div>
-      <h1 className="text-gradient mb-1">Kutubxona</h1>
+      <h1 className="text-gradient mb-1">{t('library.title')}</h1>
       <p className="text-secondary text-sm mb-4">{t('library.subtitle')}</p>
 
       <div className="flex-center mb-5" style={{ background: 'var(--glass-border)', borderRadius: '12px', padding: '4px' }}>

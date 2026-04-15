@@ -81,7 +81,7 @@ export default function Leaderboard({ user }) {
             <p className="font-bold text-md mt-1" style={{ color: '#22d3ee' }}>#{userIndex + 1} <span style={{ fontSize: '12px', color: 'var(--glass-text-muted)', fontWeight: 'normal' }}>/ {rows.length}</span></p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p className="text-xs text-secondary">Sizning balingiz</p>
+            <p className="text-xs text-secondary">{lang === 'ru' ? 'Ваш балл' : 'Sizning balingiz'}</p>
             <p className="font-bold text-md mt-1" style={{ color: "var(--text-primary)" }}>{rows[userIndex]?.rating || 0}</p>
           </div>
         </div>

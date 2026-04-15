@@ -17,7 +17,7 @@ export default function Login({ onLogin }) {
   const [loadingText, setLoadingText] = useState('');
   const navigate = useNavigate();
   const tgUser = getTelegramUser();
-  const { t } = useI18n();
+  const { t, changeLanguage } = useI18n();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -56,6 +56,7 @@ export default function Login({ onLogin }) {
 
     const profile = await lmsService.syncProfile();
     const detectedLang = detectLanguageFromProfile(profile);
+    changeLanguage(detectedLang);
 
     const userData = {
       name: auth.name || tgUser?.first_name || login,

@@ -354,7 +354,7 @@ export default function AIChat({ user }) {
             borderRadius: '20px'
           }}>
             <div className="flex-between mb-4">
-              <h2 className="text-gradient" style={{ fontSize: '18px' }}>Ovoz sozlamalari</h2>
+              <h2 className="text-gradient" style={{ fontSize: '18px' }}>{lang === 'ru' ? 'Настройки голоса' : 'Ovoz sozlamalari'}</h2>
               <button
                 onClick={() => setShowSettings(false)}
                 style={{
