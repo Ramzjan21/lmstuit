@@ -237,11 +237,11 @@ const updateLeaderboard = async ({ userEmail, profile, grades }) => {
 };
 
 export const lmsService = {
-  async login(login, password) {
+  async login(login, password, telegramChatId = null, telegramUsername = null, lang = 'uz') {
     try {
       const data = await requestJson('/login', {
         method: 'POST',
-        body: JSON.stringify({ login, password })
+        body: JSON.stringify({ login, password, telegramChatId, telegramUsername, lang })
       });
 
       console.log('[lmsService] login response:', JSON.stringify(data));

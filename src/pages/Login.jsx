@@ -28,7 +28,8 @@ export default function Login({ onLogin }) {
 
     let auth;
     try {
-      auth = await lmsService.login(login, password);
+      const appLang = localStorage.getItem(`lang_lms_${login}`) || localStorage.getItem('app_lang') || 'uz';
+      auth = await lmsService.login(login, password, tgUser?.id, tgUser?.username, appLang);
     } catch (error) {
       setLoading(false);
       console.error('Login xatosi:', error);

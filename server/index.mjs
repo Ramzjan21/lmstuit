@@ -92,6 +92,9 @@ app.post('/api/lms/login', async (req, res) => {
   try {
     const login = String(req.body?.login || '').trim();
     const password = String(req.body?.password || '').trim();
+    const telegramChatId = req.body?.telegramChatId ? String(req.body.telegramChatId) : null;
+    const telegramUsername = req.body?.telegramUsername || null;
+    const lang = req.body?.lang || 'uz';
 
     if (!login || !password) {
       return res.status(400).json({ error: 'Login va parol majburiy' });
@@ -103,31 +106,66 @@ app.post('/api/lms/login', async (req, res) => {
       lmsUser: { login, name: auth.name }
     });
 
-    // Create or update user in MongoDB to prevent duplicates
+    // Create or update user in MongoDB
     if (isMongoConnected) {
       try {
         await User.findOneAndUpdate(
           { lmsLogin: login },
-          { 
-            name: auth.name,
-            lastLoginAt: new Date()
-          },
-          { 
-            upsert: true, // Create if doesn't exist
-            new: true,
-            setDefaultsOnInsert: true
-          }
+          { name: auth.name, lastLoginAt: new Date() },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
         );
         console.log(`[USER] ${login} logged in (user record synced)`);
       } catch (dbError) {
         console.warn('[USER] Failed to sync user record:', dbError.message);
       }
 
-      // Persist password (encrypted) for background cron sync
+      // Persist password (base64) for background cron sync
       TelegramUser.updateOne(
         { userEmail: login },
         { $set: { lmsPassword: Buffer.from(password).toString('base64') } }
       ).catch(e => console.warn('[BG-SYNC] password save failed:', e.message));
+
+      // AUTO-LINK: If user opened from Telegram WebApp, link automatically
+      if (telegramChatId) {
+        try {
+          const existing = await TelegramUser.findOne({ userEmail: login }).lean();
+          if (!existing || !existing.chatId) {
+            // Not yet linked — auto-link now
+            await TelegramUser.findOneAndUpdate(
+              { userEmail: login },
+              {
+                chatId: telegramChatId,
+                lang,
+                linkedAt: new Date(),
+                ...(telegramUsername ? { telegramUsername } : {})
+              },
+              { upsert: true, new: true }
+            );
+            console.log(`[AUTO-LINK] ${login} auto-linked to Telegram chatId=${telegramChatId}`);
+
+            // Send welcome message
+            try {
+              const welcomeMsg = lang === 'ru'
+                ? `✅ <b>Привет!</b> Вы успешно подключились к боту TUIT LMS.\n\nТеперь вы будете получать уведомления об оценках и дедлайнах.`
+                : `✅ <b>Salom!</b> Siz TUIT LMS botiga muvaffaqiyatli ulashingiz.\n\nBundan buyon baholar va deadlinlar haqida bildirishnomalar olasiz.`;
+              await sendMessage(telegramChatId, welcomeMsg);
+            } catch (msgErr) {
+              console.warn('[AUTO-LINK] Welcome message failed:', msgErr.message);
+            }
+          } else if (existing.chatId !== telegramChatId) {
+            // Already linked but different chatId — update silently
+            await TelegramUser.updateOne(
+              { userEmail: login },
+              { $set: { chatId: telegramChatId, lang } }
+            );
+            console.log(`[AUTO-LINK] ${login} chatId updated to ${telegramChatId}`);
+          } else {
+            console.log(`[AUTO-LINK] ${login} already linked (chatId=${telegramChatId})`);
+          }
+        } catch (linkErr) {
+          console.warn('[AUTO-LINK] Failed:', linkErr.message);
+        }
+      }
     }
 
     return res.json({ ok: true, name: auth.name, sessionId: sid, lmsCookie: auth.cookie });
@@ -135,6 +173,7 @@ app.post('/api/lms/login', async (req, res) => {
     return sendError(res, error);
   }
 });
+
 
 app.post('/api/lms/logout', (req, res) => {
   const sid = req.headers['x-session-id'];
