@@ -210,6 +210,7 @@ export const parseDeadlineEvents = (events = []) => {
         id: `lms_deadline_${due.getTime()}_${index}`,
         source: 'lms',
         title: `${subject}: ${work}`,
+        taskName: work, // raw task name for matching scores on course page
         subject,
         category: inferTaskCategory(work),
         description: [code ? `Kod: ${code}` : '', teacher ? `O'qituvchi: ${teacher}` : ''].filter(Boolean).join(' | '),
@@ -223,6 +224,52 @@ export const parseDeadlineEvents = (events = []) => {
     .filter(Boolean)
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
 };
+
+/**
+ * Parse ALL task scores from a course "show" page.
+ * The page HTML has blocks like:
+ *   <div>Задание 1....</div>  <button class="btn-default">6</button> <button class="btn-primary">6</button>
+ * Returns: [{ taskName: string, score: number, maxScore: number }]
+ */
+export const parseCourseTaskScores = (html = '') => {
+  const results = [];
+  
+  // Each task appears inside a row/block that contains:
+  // 1. The task name text
+  // 2. Two consecutive buttons: first is earned score (btn-default), second is max (btn-primary)
+  
+  // Find all blocks that contain both a task name AND two score buttons nearby.
+  // Pattern: find a text label near two sequential buttons with numbers
+  const blockPattern = /(?:<tr[^>]*>|<div[^>]*class="[^"]*row[^"]*"[^>]*>)([\s\S]*?)(?:<\/tr>|(?=<tr[^>]*>)|<\/div)\s*>/gi;
+  
+  // Simpler approach: find all btn groups (pairs of score buttons)
+  // Then look backwards in the HTML for the nearest task/assignment label
+  const btnPairPattern = /<button[^>]*class="[^"]*btn-default[^"]*"[^>]*>\s*(\d+[\.,]?\d*)\s*<\/button>[\s\S]{0,300}?<button[^>]*class="[^"]*btn-primary[^"]*"[^>]*>\s*(\d+[\.,]?\d*)\s*<\/button>/gi;
+  
+  let match;
+  while ((match = btnPairPattern.exec(html)) !== null) {
+    const score = parseNumber(match[1], null);
+    const maxScore = parseNumber(match[2], null);
+    
+    if (score === null || maxScore === null) continue;
+    
+    // Look backwards from this match for the nearest task name
+    const beforeText = html.substring(Math.max(0, match.index - 2000), match.index);
+    const stripped = stripHtml(beforeText);
+    
+    // Find task name — it will be the last mention of "Задание", "Topshiriq", "task" etc. before the button
+    const taskNameMatch = stripped.match(/(?:Задание|Task|Topshiriq|Vazifa|Задача|Рубеж|Oraliq|Laboratoriya|Kurs)\s*[\d.]*[\s:.-]([^\n\r]{3,80})$/i) 
+      || stripped.match(/([^\n\r]{5,80})\s*$/);
+    
+    const rawName = taskNameMatch ? taskNameMatch[1]?.trim() || taskNameMatch[0]?.trim() : null;
+    const taskName = rawName ? stripHtml(rawName).replace(/\s+/g, ' ').trim() : null;
+    
+    results.push({ taskName, score, maxScore });
+  }
+  
+  return results;
+};
+
 
 export const parseProfile = (html = '') => {
   const rows = Array.from(html.matchAll(/<strong[^>]*>\s*([^:<]+):?\s*<\/strong>\s*([\s\S]*?)(?=<\/p>)/gi));

@@ -4,6 +4,7 @@ import {
   parseCalendarJson,
   parseCourseDetail,
   parseCourseLinks,
+  parseCourseTaskScores,
   parseCourseSemesterId,
   parseCoursesFromJson,
   parseDeadlineEvents,
@@ -249,37 +250,86 @@ export const fetchDeadlines = async (cookie, enrichWithDetails = true) => {
   const html = await fetchPage(cookie, '/student/deadlines');
   const tasks = parseDeadlineEvents(parseCalendarJson(html));
   
-  // If enrichWithDetails is false, return basic tasks without fetching details
-  if (!enrichWithDetails) {
+  if (!enrichWithDetails || !tasks.length) {
     return tasks;
   }
   
-  // Fetch detailed information for each task (max 20 tasks to avoid timeout)
-  const tasksToEnrich = tasks.slice(0, 20);
-  const enrichedTasks = await Promise.all(
-    tasksToEnrich.map(async (task) => {
-      if (!task.link) return task;
-      
+  // Group tasks by their course link (e.g. /student/my-courses/show/25630)
+  // so we can fetch each course page once and extract ALL task scores from it
+  const tasksByCourse = new Map(); // courseUrl -> [tasks]
+  const tasksWithoutLink = [];
+  
+  for (const task of tasks) {
+    if (!task.link) {
+      tasksWithoutLink.push(task);
+      continue;
+    }
+    // Normalize course URL — strip hash/query
+    const courseUrl = task.link.split('?')[0].split('#')[0].trim();
+    if (!tasksByCourse.has(courseUrl)) {
+      tasksByCourse.set(courseUrl, []);
+    }
+    tasksByCourse.get(courseUrl).push(task);
+  }
+  
+  // Process each course page once
+  const enrichedMap = new Map(); // taskId -> enriched task
+  
+  await Promise.all(
+    Array.from(tasksByCourse.entries()).map(async ([courseUrl, courseTasks]) => {
       try {
-        const details = await fetchTaskDetail(cookie, task.link);
-        return {
-          ...task,
-          maxScore: details.maxScore,
-          score: details.score,
-          submitted: details.submitted,
-          submittedAt: details.submittedAt,
-          comment: details.comment,
-          grade: details.grade
-        };
-      } catch (error) {
-        console.warn(`Failed to enrich task ${task.id}:`, error.message);
-        return task;
+        const courseHtml = await fetchPage(cookie, courseUrl);
+        // Parse all task score rows from the course page
+        const courseScores = parseCourseTaskScores(courseHtml);
+        
+        for (const task of courseTasks) {
+          const taskNameLower = (task.taskName || '').toLowerCase().trim();
+          // Also extract date string for matching (e.g. "23-02-2026")
+          const taskDeadlineDate = task.dueDate
+            ? task.dueDate.split('-').reverse().join('-') // yyyy-mm-dd -> dd-mm-yyyy
+            : '';
+          
+          let matchedScore = null;
+          if (courseScores.length > 0) {
+            // Strategy 1: match by deadline date in the courseScores taskName field
+            if (taskDeadlineDate) {
+              const ddmm = taskDeadlineDate; // dd-mm-yyyy
+              matchedScore = courseScores.find(cs => {
+                const csName = (cs.taskName || '');
+                return csName.includes(ddmm);
+              });
+            }
+            
+            // Strategy 2: fuzzy name match if date didn't work
+            if (!matchedScore && taskNameLower.length > 3) {
+              // Get first 20 meaningful chars of task name
+              const taskKey = taskNameLower.replace(/\s+/g, ' ').slice(0, 20);
+              matchedScore = courseScores.find(cs => {
+                const csName = (cs.taskName || '').toLowerCase();
+                return csName.includes(taskKey) || taskKey && csName.includes(taskKey.slice(0, 12));
+              });
+            }
+          }
+          
+          enrichedMap.set(task.id, {
+            ...task,
+            score: matchedScore?.score ?? null,
+            maxScore: matchedScore?.maxScore ?? null,
+            submitted: matchedScore !== undefined && matchedScore !== null,
+          });
+        }
+      } catch (err) {
+        console.warn(`[fetchDeadlines] Could not fetch course ${courseUrl}:`, err.message);
+        // Return tasks unchanged if course fetch fails
+        for (const task of courseTasks) {
+          enrichedMap.set(task.id, task);
+        }
       }
     })
   );
   
-  // Return enriched tasks + remaining tasks without details
-  return [...enrichedTasks, ...tasks.slice(20)];
+  // Reconstruct tasks in original order
+  return tasks.map(task => enrichedMap.get(task.id) || task);
 };
 
 export const fetchStudyPlan = async (cookie) => {
