@@ -394,29 +394,6 @@ export default function Dashboard({ user, onLogout }) {
           <div className="glass-panel p-3"><p className="text-sm text-secondary">{t('dashboard.noTasks')}</p></div>
         )}
       </div>
-
-      <div className="glass-panel p-3 mt-4" style={{ background: 'rgba(0,255,200,0.05)', borderColor: 'rgba(0,255,200,0.16)' }}>
-        <div className="flex-between" style={{ gap: '8px' }}>
-          <button onClick={() => navigate('/grades')} style={quickBtnStyle('#00d1ff')}><GraduationCap size={14} /> {t('nav.grades', {}, 'Baholar')}</button>
-          <button onClick={() => navigate('/tasks')} style={quickBtnStyle('#f59e0b')}><ListTodo size={14} /> {t('nav.tasks', {}, 'Topshiriq')}</button>
-          <button onClick={() => navigate('/timetable')} style={quickBtnStyle('#10b981')}><CalendarDays size={14} /> {t('nav.schedule', {}, 'Jadval')}</button>
-          <button onClick={() => navigate('/leaderboard')} style={quickBtnStyle('#22d3ee')}><Trophy size={14} /> {t('nav.top', {}, 'Top')}</button>
-        </div>
-      </div>
     </div>
   );
 }
-
-const quickBtnStyle = (color) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  border: '1px solid var(--glass-border)',
-  background: 'var(--glass-bg)',
-  color,
-  padding: '8px 9px',
-  borderRadius: '8px',
-  cursor: 'pointer',
-  fontSize: '11px',
-  fontWeight: 600
-});

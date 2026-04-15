@@ -21,7 +21,7 @@ const countdownLabel = (iso, t, isExpired) => {
   if (Number.isNaN(target)) return t('tasks.noTime');
 
   const diff = target - Date.now();
-  if (diff <= 0) return isExpired ? t('tasks.submitted') || 'Topshirilgan' : t('tasks.expired');
+  if (diff <= 0) return isExpired ? t('tasks.graded', {}, 'Baholangan') : t('tasks.expired');
 
   const minutes = Math.floor(diff / (1000 * 60));
   if (minutes < 60) return t('tasks.leftMinutes', { value: minutes });
@@ -389,7 +389,7 @@ export default function Tasks({ user }) {
                                     {isPast && scoreDisplay}
                                     {task.submitted && !isPast && (
                                       <span style={{ fontSize: '10px', color: 'var(--success)' }}>
-                                        ✓ Topshirilgan
+                                        ✓ Baholangan
                                       </span>
                                     )}
                                   </>
